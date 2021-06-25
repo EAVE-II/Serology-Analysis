@@ -34,6 +34,8 @@ df_comorbid_small <- df_comorbid %>%
   filter(EAVE_LINKNO %in% ids)
 df_comorbid_small
 
-t <- df_demographics %>% filter(EAVE_LINKNO %in% ids)
-t
-
+df_merged <- df_comorbid_small %>%
+  left_join(y=df_demographics) %>%
+  left_join(y=df_serology) %>%
+  group_by(cluster)
+df_merged
