@@ -4,12 +4,32 @@ library("tidyr")
 library(tibble)
 library(survey)
 
-# load the serology dataset (first 6montsh of the pandemic)
-df_serology <- readRDS("/conf/EAVE/GPanalysis/data/Serology_all.rds")
-# load the EAVE-II demographics 
-df_demographics <- readRDS("/conf/EAVE/GPanalysis/data/EAVE_demographics_SK.rds")
-# load the comorbidities from QCOviD
-df_comorbid <- readRDS("/conf/EAVE/GPanalysis/data/cleaned_data/Qcovid_update_Jan21.rds")
+
+# load healthboard population estimates for Scotland for 2019
+df_pop_estimate <- readRDS("/conf/EAVE/GPanalysis/data/lookups/HB2019_pop_lookup.rds")
+# extract the population distribution for sex
+df_pop_sex <- df_pop_estimate %>% group_by(sex,sex_name) %>% summarise(pop = sum(pop))
+# extract the population distribution for age
+df_pop_age <- df_pop_estimate %>% group_by(age) %>% summarise(pop = sum(pop))
+# extract the population distribution for age and sex at the same time
+df_pop_age_sex <- df_pop_estimate %>% group_by(age,sex,sex_name) %>% summarise(pop = sum(pop))
+
+# load the serology dataset (first 6 month of the pandemic)
+df_serology_first_6months <- readRDS("/conf/EAVE/GPanalysis/data/Serology_all.rds")
+
+df_serology_first_6months %>% distinct(EAVE_LINKNO,.keep_all = TRUE)
+
+# load the rest of the serology data
+df_serology_Oct20May21 <- readRDS("/conf/EAVE/GPanalysis/data/Serology_Oct20May21.rds")
+
+# print column names as they're different 
+colnames(df_serology_first_6months)
+colnames(df_serology_Oct20May21)
+
+# comorbidities from QCOVID + demographics 
+# created by prep_datasets.R
+df_comorbid <- readRDS("/home/calumm09/data/comorbidities.rds") 
+df_comorbid
 
 # print to see how many rows/entries of data we have for each dataset
 # demographics has ~5.8 million > scotish population 
@@ -23,6 +43,10 @@ nrow(df_comorbid)
 colnames(df_serology)
 colnames(df_demographics)
 colnames(df_comorbid)
+
+comorbidites = unique(df_comorbid$cluster)
+comorbidites
+
 
 
 
