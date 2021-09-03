@@ -25,9 +25,10 @@ nrow(df_comorbid)
 # seperate columns now for different comorbidities
 # NA means the person is not classified with said comorbidity 
 # None NA means the person is classified (value is comorbidity value, e.g. BMI)
-df_comorbid_flat <- df_comorbid %>% 
+df_comorbid_flat <- df_comorbid %>%
   group_by(EAVE_LINKNO) %>%
-  spread(cluster, Value)
+  spread(cluster, Value, fill=0, convert=TRUE)
+df_comorbid_flat
 
 nrow(df_comorbid_flat)
 
