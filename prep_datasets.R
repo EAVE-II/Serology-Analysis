@@ -47,3 +47,41 @@ nrow(df_comorbid_flat)
 
 # save this new dataframe
 saveRDS(df_comorbid_flat,"/home/calumm09/data/comorbidities.rds")
+
+
+df_deaths <- readRDS("/conf/EAVE/GPanalysis/data/all_deaths.rds") %>%
+        as_tibble()
+
+df_deaths
+
+df_cdw <- readRDS("/conf/EAVE/GPanalysis/data/CDW_deduped.rds") %>%
+  as_tibble()
+
+df_cdw
+
+df_wgs <- readRDS("/conf/EAVE/GPanalysis/data/WGS_latest.rds") %>%
+  as_tibble()
+
+df_wgs
+
+df_vac <- readRDS("/conf/EAVE/GPanalysis/data/cleaned_data/C19vaccine.rds") %>%
+  as_tibble()
+
+df_vac
+
+
+df_serology <- readRDS("/conf/EAVE/GPanalysis/data/serology_full_2021-09-16.rds") %>%
+  as_tibble()
+
+df_serology
+
+df_comorbid <- readRDS("/conf/EAVE/GPanalysis/data/cleaned_data/Qcovid_update_Jan21.rds") %>%
+  as_tibble()
+
+
+
+
+df_demographics <- readRDS("/conf/EAVE/GPanalysis/data/EAVE_demographics_SK.rds") %>%
+  as_tibble() 
+
+

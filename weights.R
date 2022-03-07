@@ -66,6 +66,9 @@ calculate_weights <- function (dataset, subset_filter, comorbidity) {
              select(!!as.name(comorbidity))
   
   freq.subset <- count(subset, !!as.name(comorbidity))  %>% rename(Freq=n)
+  
+  print (freq)
+  print (freq.subset)
 
   print(freq$Freq / sum(freq$Freq))
   print(freq.subset$Freq / sum(freq.subset$Freq))
@@ -97,5 +100,6 @@ for(x in colnames(df_comorbid.serology_first_6months))  {
   calculate_weights(df_comorbid.serology_first_6months,"had_serology_test", x)
   
 }
+
 
 
