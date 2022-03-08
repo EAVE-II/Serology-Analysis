@@ -12,6 +12,11 @@ library(tibble)
 library("tidyr")
 library(ggplot2)
 require(scales) 
+install.packages("remotes")
+library(remotes)
+remotes::install_github("Public-Health-Scotland/phsstyles",
+  upgrade = "never"
+)
 ```
 
 
@@ -30,6 +35,10 @@ nrow(df_serology_pc)
 See the column names...
 ```{r}
 colnames(df_serology_pc)
+```
+
+```
+
 ```
 
 Make a quick histogram plot of the number of samples collected over time
@@ -67,9 +76,17 @@ nrow(df_serology_bd)
 
 ```
 
+```{r}
+library(phsstyles)
+```
+
+
+
 Plot the number of samples collected over time for the blood donors
 ```{r}
-qplot(df_serology_bd$Sampledate_iso, geom="histogram", fill=I("red"), xlab='Sample Date', ylab='Number of Collected Samples', bins=40) 
+qplot(df_serology_bd$Sampledate_iso, 
+      geom="histogram", 
+      xlab='Sample Date', ylab='Number of Collected Samples', bins=40) + scale_colour_discrete_phs(palette = "main")
 ```
 
 
@@ -114,7 +131,13 @@ df_ana_pc_pos <- df_ana_pc %>% dplyr::filter(test_result_qual == "Positive")
 nrow(df_ana_pc_pos)
 ```
 
+```{r}
+df_ana_pc %>% group_by(n_risk_gps) %>% summarise(counts=n())
+```
+
+
 Plot a histogram showing the linking of the serology data (primary care) with QCOVID
+
 
 ```{r}
 bw <- 50
@@ -122,8 +145,8 @@ n <- nrow(df_ana_pc_pos)
 p <- ggplot(df_ana_pc_pos, aes(x=IgG, fill=n_risk_gps)) +
      geom_histogram(binwidth = bw) + xlim(0,1000+bw) +
      labs(x="Primary Care IgG", y="Number of Samples", fill="Number of Risks (QCOVID)") +
-     theme(aspect.ratio = 0.5) + 
-     scale_fill_brewer(palette="Set2")
+     scale_fill_discrete_phs(palette = "main") + 
+     theme(aspect.ratio = 0.5) 
 p
 ```
 
@@ -142,14 +165,44 @@ max(df_ana_bd_pos$IgG)
 ```
 
 
+Number of risk groups in the dataset
+
+```{r}
+df_ana_bd %>% group_by(n_risk_gps) %>% summarise(n=n())
+```
+
+
+All data
+
+```{r}
+bw <- 0.1
+n <- nrow(df_ana_bd)
+p <- ggplot(df_ana_bd, aes(x=IgG, fill=n_risk_gps)) +
+     geom_histogram(binwidth = bw) + xlim(0,11+bw) +
+     labs(x="Blood Donors IgG", y="Number of Samples", fill="Number of Risks (QCOVID)") +
+     scale_fill_discrete_phs(palette = "main") + 
+     scale_y_log10() +
+     theme(aspect.ratio = 0.5) 
+p
+
+```
+
+Positive samples only...
+
+```{r}
+df_ana_bd_pos %>% group_by(n_risk_gps) %>% summarise(n=n())
+```
+
+
 ```{r}
 bw <- 0.1
 n <- nrow(df_ana_bd_pos)
 p <- ggplot(df_ana_bd_pos, aes(x=IgG, fill=n_risk_gps)) +
      geom_histogram(binwidth = bw) + xlim(0,11+bw) +
      labs(x="Blood Donors IgG", y="Number of Samples", fill="Number of Risks (QCOVID)") +
-     theme(aspect.ratio = 0.5) + 
-     scale_fill_brewer(palette="Set2")
+     scale_fill_discrete_phs(palette = "main") + 
+     scale_y_log10() +
+     theme(aspect.ratio = 0.5) 
 p
-
 ```
+
