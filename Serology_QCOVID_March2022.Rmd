@@ -1,0 +1,155 @@
+---
+title: "Serology Data Exploration March 2022"
+output: html_notebook
+---
+## Datasets
+
+
+Setup dependancies
+```{r}
+library(dplyr)
+library(tibble)
+library("tidyr")
+library(ggplot2)
+require(scales) 
+```
+
+
+### Serology Primary Care 
+
+Load serology Primary Care and print the number of rows of data there are. Also, extract the IgG quantative result as a number.
+```{r}
+
+df_serology_pc <- readRDS("/conf/EAVE/GPanalysis/data/serology_primcare_march22.rds") %>% 
+                  as_tibble() %>%
+                  dplyr::mutate(IgG = readr::parse_number(test_result_quant))
+
+nrow(df_serology_pc)
+```
+
+See the column names...
+```{r}
+colnames(df_serology_pc)
+```
+
+Make a quick histogram plot of the number of samples collected over time
+```{r}
+qplot(df_serology_pc$Sampledate_iso, geom="histogram", fill=I("red"), xlab='Sample Date', ylab='Number of Collected Samples', bins=30) 
+```
+
+
+
+Count how many times each person has had a sample taken, and then count how many occurrences there are of people with `nsamples`
+```{r}
+df_serology_pc %>% dplyr::group_by(EAVE_LINKNO) %>% dplyr::summarise(nsamples = dplyr::n()) %>% 
+                   dplyr::group_by(nsamples) %>% dplyr::summarise(noccurrences = dplyr::n())
+```
+
+
+
+Filter the dataframe to get the number of rows where there has been a positive test result
+```{r}
+
+df_serology_pc_pos <- df_serology_pc %>% dplyr::filter(test_result_qual == "Positive")
+nrow(df_serology_pc_pos)
+```
+
+
+### Serology SNBTS (blood donors)
+
+
+```{r}
+df_serology_bd <- readRDS("/conf/EAVE/GPanalysis/data/serology_snbts_march22.rds") %>% 
+                  as_tibble() %>%
+                  dplyr::mutate(IgG = readr::parse_number(test_result_quant))
+
+nrow(df_serology_bd)
+
+```
+
+Plot the number of samples collected over time for the blood donors
+```{r}
+qplot(df_serology_bd$Sampledate_iso, geom="histogram", fill=I("red"), xlab='Sample Date', ylab='Number of Collected Samples', bins=40) 
+```
+
+
+Again, filter the dataframe to get the number of rows where there has been a positive test result:
+```{r}
+
+df_serology_bd_pos <- df_serology_bd %>% dplyr::filter(test_result_qual == "Positive")
+nrow(df_serology_bd_pos)
+```
+
+Check the number of repeat measurements of a person.. 
+```{r}
+df_serology_bd %>% dplyr::group_by(EAVE_LINKNO) %>% dplyr::summarise(nsamples = dplyr::n()) %>% 
+                   dplyr::group_by(nsamples) %>% dplyr::summarise(noccurrences = dplyr::n())
+```
+
+
+### QCOVID (Feb22 Update)
+
+Here we load the QCOVID dataframe and filter it on those EAVE studies that are present in the serology datasets.
+
+```{r}
+df_qcovid <- readRDS("/conf/EAVE/GPanalysis/data/cleaned_data/QCOVID_feb22.rds") %>% 
+             as_tibble() 
+
+df_qcovid_pc <- df_qcovid %>% dplyr::filter(EAVE_LINKNO %in% df_serology_pc$EAVE_LINKNO)
+nrow(df_qcovid_pc)
+
+df_qcovid_bd <- df_qcovid %>% dplyr::filter(EAVE_LINKNO %in% df_serology_bd$EAVE_LINKNO)
+nrow(df_qcovid_bd)
+
+```
+
+
+```{r}
+df_ana_pc <- df_serology_pc %>% dplyr::left_join(df_nrisks) %>% 
+          dplyr::select(c("EAVE_LINKNO","Sampledate_iso","test_result_qual","IgG","n_risk_gps")) %>%
+          dplyr::mutate(n_risk_gps = ifelse(is.na(n_risk_gps), "0", levels(n_risk_gps)[n_risk_gps]))
+          
+
+df_ana_pc_pos <- df_ana_pc %>% dplyr::filter(test_result_qual == "Positive")
+nrow(df_ana_pc_pos)
+```
+
+Plot a histogram showing the linking of the serology data (primary care) with QCOVID
+
+```{r}
+bw <- 50
+n <- nrow(df_ana_pc_pos)
+p <- ggplot(df_ana_pc_pos, aes(x=IgG, fill=n_risk_gps)) +
+     geom_histogram(binwidth = bw) + xlim(0,1000+bw) +
+     labs(x="Primary Care IgG", y="Number of Samples", fill="Number of Risks (QCOVID)") +
+     theme(aspect.ratio = 0.5) + 
+     scale_fill_brewer(palette="Set2")
+p
+```
+
+Plot a histogram showing the linking of the serology data with QCOVID
+```{r}
+df_ana_bd <- df_serology_bd %>% dplyr::left_join(df_nrisks) %>% 
+          dplyr::select(c("EAVE_LINKNO","Sampledate_iso","test_result_qual","IgG","n_risk_gps")) %>%
+          dplyr::mutate(n_risk_gps = ifelse(is.na(n_risk_gps), "0", levels(n_risk_gps)[n_risk_gps]))
+          
+
+df_ana_bd_pos <- df_ana_bd %>% dplyr::filter(test_result_qual == "Positive")
+```
+```{r}
+min(df_ana_bd_pos$IgG) 
+max(df_ana_bd_pos$IgG) 
+```
+
+
+```{r}
+bw <- 0.1
+n <- nrow(df_ana_bd_pos)
+p <- ggplot(df_ana_bd_pos, aes(x=IgG, fill=n_risk_gps)) +
+     geom_histogram(binwidth = bw) + xlim(0,11+bw) +
+     labs(x="Blood Donors IgG", y="Number of Samples", fill="Number of Risks (QCOVID)") +
+     theme(aspect.ratio = 0.5) + 
+     scale_fill_brewer(palette="Set2")
+p
+
+```
