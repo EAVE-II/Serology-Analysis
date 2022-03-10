@@ -12,11 +12,25 @@ library(tibble)
 library("tidyr")
 library(ggplot2)
 require(scales) 
-install.packages("remotes")
 library(remotes)
-remotes::install_github("Public-Health-Scotland/phsstyles",
-  upgrade = "never"
-)
+#remotes::install_github("Public-Health-Scotland/phsstyles",
+##  upgrade = "never"
+#)
+```
+
+```{r}
+library(phsstyles)
+```
+
+
+
+### Vaccinations
+
+Vaccinations that include the time, for those who have had a serology sample taken
+
+```{r}
+df_vacc <- readRDS("/conf/EAVE/GPanalysis/data/temp/sero_vacc_time.rds") %>% as_tibble()
+nrow(df_vacc)
 ```
 
 
@@ -62,6 +76,7 @@ Filter the dataframe to get the number of rows where there has been a positive t
 df_serology_pc_pos <- df_serology_pc %>% dplyr::filter(test_result_qual == "Positive")
 nrow(df_serology_pc_pos)
 ```
+
 
 
 ### Serology SNBTS (blood donors)
@@ -122,7 +137,7 @@ nrow(df_qcovid_bd)
 
 
 ```{r}
-df_ana_pc <- df_serology_pc %>% dplyr::left_join(df_nrisks) %>% 
+df_ana_pc <- df_serology_pc %>% dplyr::left_join(df_qcovid_pc) %>% 
           dplyr::select(c("EAVE_LINKNO","Sampledate_iso","test_result_qual","IgG","n_risk_gps")) %>%
           dplyr::mutate(n_risk_gps = ifelse(is.na(n_risk_gps), "0", levels(n_risk_gps)[n_risk_gps]))
           
@@ -149,6 +164,78 @@ p <- ggplot(df_ana_pc_pos, aes(x=IgG, fill=n_risk_gps)) +
      theme(aspect.ratio = 0.5) 
 p
 ```
+
+
+```{r}
+df_ana <- df_ana_pc %>% left_join(df_vacc %>% filter(serology_source=='primary_care_serology'))
+df_ana
+```
+
+
+Measurements taken after 1st Vac, before 2nd Vac
+```{r}
+df_ana_v1 <- df_ana %>% filter(Sampledate_iso > d1_datetime & Sampledate_iso < d2_datetime )
+```
+
+
+```{r}
+library(lubridate)
+```
+
+```{r}
+
+# create breaks
+breaks <- hour(hm("00:00", "6:00", "12:00", "18:00", "23:59"))
+# labels for the breaks
+labels <- c("Night", "Morning", "Afternoon", "Evening")
+
+df_ana_v1$Time_of_day <- cut(x=hour(df_ana_v1$d1_datetime), breaks = breaks, labels = labels, include.lowest=TRUE)
+```
+
+Calculate the number of days the measurement was taken after the first vaccine 
+
+```{r}
+df_ana_v1 <- df_ana_v1 %>% mutate(days_passed = as.numeric(Sampledate_iso - d1_datetime,units='days'))
+```
+
+
+```{r}
+ggplot(df_ana_v1, aes(x=days_passed)) + 
+  geom_histogram()
+```
+
+```{r}
+ggplot(df_ana_v1, aes(x=IgG)) + 
+  geom_histogram()
+```
+
+
+
+```{r}
+ggplot(df_ana_v1, aes(x=days_passed, y=mean(IgG))) + 
+  geom_boxplot(width=500)
+
+```
+
+```{r}
+df_ana_v1 %>% mutate(bin_dist = factor(days_passed%/%bin_size))
+```
+
+
+```{r}
+bin_size <- 20
+
+df_ana_v1 %>% 
+  mutate(bin_dist = factor(days_passed%/%bin_size)) %>% 
+  ggplot(aes(x = bin_dist, y = IgG)) +
+  geom_boxplot()
+```
+
+```{r}
+df_ana_v1 %>% select(c("Sampledate_iso","IgG","n_risk_gps","d1_product","d1_datetime","Time_of_day","days_passed")) %>% write.csv('test.csv')
+```
+
+
 
 Plot a histogram showing the linking of the serology data with QCOVID
 ```{r}
