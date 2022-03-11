@@ -15,7 +15,7 @@ require(scales)
 library(remotes)
 #remotes::install_github("Public-Health-Scotland/phsstyles",
 ##  upgrade = "never"
-#)
+#)git 
 ```
 
 ```{r}
@@ -168,7 +168,6 @@ p
 
 ```{r}
 df_ana <- df_ana_pc %>% left_join(df_vacc %>% filter(serology_source=='primary_care_serology'))
-df_ana
 ```
 
 
@@ -217,9 +216,6 @@ ggplot(df_ana_v1, aes(x=days_passed, y=mean(IgG))) +
 
 ```
 
-```{r}
-df_ana_v1 %>% mutate(bin_dist = factor(days_passed%/%bin_size))
-```
 
 
 ```{r}
@@ -239,7 +235,7 @@ df_ana_v1 %>% select(c("Sampledate_iso","IgG","n_risk_gps","d1_product","d1_date
 
 Plot a histogram showing the linking of the serology data with QCOVID
 ```{r}
-df_ana_bd <- df_serology_bd %>% dplyr::left_join(df_nrisks) %>% 
+df_ana_bd <- df_serology_bd %>% dplyr::left_join(df_qcovid_bd) %>% 
           dplyr::select(c("EAVE_LINKNO","Sampledate_iso","test_result_qual","IgG","n_risk_gps")) %>%
           dplyr::mutate(n_risk_gps = ifelse(is.na(n_risk_gps), "0", levels(n_risk_gps)[n_risk_gps]))
           

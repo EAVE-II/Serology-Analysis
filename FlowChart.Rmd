@@ -1,0 +1,142 @@
+---
+title: "flow"
+output: html_notebook
+---
+
+```{r}
+
+install.packages("DiagrammeR")
+```
+
+
+```{r}
+library(dplyr)
+library(tibble)
+library("tidyr")
+library("DiagrammeR")
+```
+
+```{r}
+df_vacc <- readRDS("/conf/EAVE/GPanalysis/data/temp/sero_vacc_time.rds") %>% as_tibble()
+
+df_serology_pc <- readRDS("/conf/EAVE/GPanalysis/data/serology_primcare_march22.rds") %>% 
+                  as_tibble() 
+
+df_serology_bd <- readRDS("/conf/EAVE/GPanalysis/data/serology_snbts_march22.rds") %>% 
+                  as_tibble() %>%
+                  dplyr::mutate(IgG = readr::parse_number(test_result_quant))
+
+nrow(df_serology_bd)
+
+df_qcovid <- readRDS("/conf/EAVE/GPanalysis/data/cleaned_data/QCOVID_feb22.rds") %>% 
+             as_tibble() 
+
+df_qcovid_pc <- df_qcovid %>% dplyr::filter(EAVE_LINKNO %in% df_serology_pc$EAVE_LINKNO)
+nrow(df_qcovid_pc)
+
+df_qcovid_bd <- df_qcovid %>% dplyr::filter(EAVE_LINKNO %in% df_serology_bd$EAVE_LINKNO)
+nrow(df_qcovid_bd)
+```
+
+
+```{r}
+df_vacc_pc <- df_vacc %>% filter(serology_source=='primary_care_serology')
+df_vacc_bd <- df_vacc %>% filter(serology_source!='primary_care_serology')
+```
+
+
+```{r}
+df_ana_pc <- df_serology_pc %>% dplyr::inner_join(df_qcovid_pc) %>% dplyr::inner_join(df_vacc_pc)
+nrow(df_ana_pc)
+nrow(df_serology_pc)
+nrow(df_qcovid_pc)
+```
+
+```{r}
+df_ana_pc_pos <- df_ana_pc %>% dplyr::filter(test_result_qual == "Positive")
+```
+
+
+```{r}
+df_ana_bd <- df_serology_bd %>% dplyr::inner_join(df_qcovid_bd) %>% dplyr::inner_join(df_vacc_bd)
+df_ana_bd_pos <- df_ana_bd %>% dplyr::filter(test_result_qual == "Positive")
+```
+
+
+
+```{r}
+df_ana_pc_multi <- df_ana_pc %>% group_by(EAVE_LINKNO) %>% filter(n() >1)
+df_ana_bd_multi <- df_ana_bd %>% group_by(EAVE_LINKNO) %>% filter(n() >1)
+
+
+df_ana_pc_multi_pos <- df_ana_pc_multi %>% group_by(EAVE_LINKNO) %>% dplyr::filter(any(test_result_qual == "Positive"))
+df_ana_bd_multi_pos <- df_ana_bd_multi %>% group_by(EAVE_LINKNO)%>% dplyr::filter(any(test_result_qual == "Positive"))
+
+```
+
+```{r}
+
+
+DiagrammeR::grViz("
+digraph graph2 {
+
+graph [layout = dot]
+
+# node definitions with substituted label text
+node [shape = rectangle, width = 4, shape = folder, fillcolor = Beige, style = filled, fillcolor = Linen]
+
+pc [label = '@@1']
+bd [label = '@@2' fillcolor = bisque]
+vac_pc [label = '@@3']
+vac_bd [label = '@@4' fillcolor = bisque]
+vac [label= '@@5'  fillcolor = darkseagreen2]
+q [label= '@@6' fillcolor = 	lightcoral]
+qpc [label= '@@7']
+qbd [label= '@@8' fillcolor = bisque]
+ana_pc [label= '@@9']
+ana_pc_pos [label= '@@10']
+ana_bd [label= '@@11' fillcolor = bisque]
+ana_bd_pos [label= '@@12' fillcolor = bisque]
+
+ana_pc_multi [label= '@@13']
+ana_pc_multi_pos [label= '@@14']
+ana_bd_multi [label= '@@15' fillcolor = bisque]
+ana_bd_multi_pos [label= '@@16' fillcolor = bisque]
+
+pc -> {vac_pc,qpc}
+bd -> {vac_bd,qbd}
+vac -> {vac_pc,vac_bd}
+q -> {qpc,qbd}
+{qpc,vac_pc} -> ana_pc
+ana_pc -> ana_pc_pos [label='All Positive Tests'];
+{qbd,vac_bd} -> ana_bd
+ana_bd -> ana_bd_pos [label='All Positive Tests'];
+
+
+ana_pc -> ana_pc_multi [label='Multiple Samples'];
+ana_pc_multi -> ana_pc_multi_pos [label='At Least One Positive Test per person'];
+
+ana_bd -> ana_bd_multi [label='Multiple Samples'];
+ana_bd_multi -> ana_bd_multi_pos [label='At Least One Positive Test per person'];
+
+}
+
+[1]: paste0('Serology Primary Care (n = ', nrow(df_serology_pc), ')')
+[2]: paste0('Serology Blood Donors (n = ', nrow(df_serology_bd), ')')
+[3]: paste0('(n = ', nrow(df_vacc_pc), ')')
+[4]: paste0('(n = ', nrow(df_vacc_bd), ')')
+[5]: paste0('Vaccine Status  (n = ', nrow(df_vacc), ')')
+[6]: paste0('QCOVID Feb22 (n = ', nrow(df_qcovid), ')')
+[7]: paste0('(n = ', nrow(df_qcovid_pc), ')')
+[8]: paste0('(n = ', nrow(df_qcovid_bd), ')')
+[9]: paste0('(n = ', nrow(df_ana_pc), ')')
+[10]: paste0('(n = ', nrow(df_ana_pc_pos), ')')
+[11]: paste0('(n = ', nrow(df_ana_bd), ')')
+[12]: paste0('(n = ', nrow(df_ana_bd_pos), ')')
+[13]: paste0('(n = ', nrow(df_ana_pc_multi), ')')
+[14]: paste0('(n = ', nrow(df_ana_pc_multi_pos), ')')
+[15]: paste0('(n = ', nrow(df_ana_bd_multi), ')')
+[16]: paste0('(n = ', nrow(df_ana_bd_multi_pos), ')')
+
+")
+```
