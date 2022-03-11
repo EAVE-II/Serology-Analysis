@@ -15,7 +15,7 @@ require(scales)
 library(remotes)
 #remotes::install_github("Public-Health-Scotland/phsstyles",
 ##  upgrade = "never"
-#)git 
+#)git
 ```
 
 ```{r}
@@ -155,13 +155,57 @@ Plot a histogram showing the linking of the serology data (primary care) with QC
 
 
 ```{r}
+colnames(df_ana_pc)
+```
+
+
+```{r}
+colors <- c("Negative" = phs_colours(c("phs-blue")),"Equivocal" = phs_colours(c("phs-magenta")),"Positive" = phs_colours(c("phs-purple")))
+colors
+```
+
+```{r}
+
+n <- nrow(df_ana_pc)
+colors <- c("Negative" = phs_colours(c("phs-blue")),"Equivocal" = phs_colours(c("phs-magenta")),"Positive" = phs_colours(c("phs-purple")))
+
+
+p <- ggplot(df_ana_pc, aes(x=IgG)) +
+     geom_histogram(position = "stack", bins=30, data=subset(df_ana_pc,test_result_qual == 'Negative'), aes(fill='Negative')) +
+     geom_histogram(position = "stack", bins=30, data=subset(df_ana_pc,test_result_qual == 'Positive'), aes(fill='Positive')) +
+     geom_histogram(position = "stack", bins=30, data=subset(df_ana_pc,test_result_qual == 'Equivocal'), aes(fill='Equivocal')) +
+     labs(title='Primary Care',x="Antibody Levels [IgG]", y="Number of Samples", fill="Result") +
+     scale_fill_manual(values = colors) +
+     theme(aspect.ratio = 0.5)  +
+     scale_y_log10() +
+     scale_x_log10()
+
+p
+```
+
+
+```{r}
+
+n <- nrow(df_ana_pc)
+p <- ggplot(df_ana_pc, aes(x=IgG, fill=test_result_qual)) +
+     geom_histogram(position = "stack", bins=30) +
+     labs(title='Primary Care',x="Antibody Levels [IgG]", y="Number of Samples") +
+     theme(aspect.ratio = 0.5)  +
+     scale_y_log10() +
+     scale_x_log10()
+p
+```
+
+
+
+```{r}
 bw <- 50
-n <- nrow(df_ana_pc_pos)
-p <- ggplot(df_ana_pc_pos, aes(x=IgG, fill=n_risk_gps)) +
-     geom_histogram(binwidth = bw) + xlim(0,1000+bw) +
+n <- nrow(df_ana_pc)
+p <- ggplot(df_ana_pc, aes(IgG)) +
+     geom_histogram(bins=20) +
      labs(x="Primary Care IgG", y="Number of Samples", fill="Number of Risks (QCOVID)") +
      scale_fill_discrete_phs(palette = "main") + 
-     theme(aspect.ratio = 0.5) 
+     theme(aspect.ratio = 0.5)  
 p
 ```
 
@@ -253,6 +297,25 @@ Number of risk groups in the dataset
 ```{r}
 df_ana_bd %>% group_by(n_risk_gps) %>% summarise(n=n())
 ```
+
+
+```{r}
+
+n <- nrow(df_ana_bd)
+colors <- c("Negative" = phs_colours(c("phs-blue")),"Equivocal" = phs_colours(c("phs-magenta")),"Positive" = phs_colours(c("phs-purple")))
+
+
+p <- ggplot(df_ana_bd, aes(x=IgG)) +
+     geom_histogram(position = "stack", bins=40, data=subset(df_ana_bd,test_result_qual == 'Negative'), aes(fill='Negative')) +
+     geom_histogram(position = "stack", bins=40, data=subset(df_ana_bd,test_result_qual == 'Positive'), aes(fill='Positive')) +
+     geom_histogram(position = "stack", bins=40, data=subset(df_ana_bd,test_result_qual == 'Equivocal'), aes(fill='Equivocal')) +
+     labs(title='Blood Donors',x="Antibody Levels [IgG]", y="Number of Samples", fill="Result") +
+     scale_fill_manual(values = colors) +
+     theme(aspect.ratio = 0.5)  +
+     scale_y_log10() 
+p
+```
+
 
 
 All data
