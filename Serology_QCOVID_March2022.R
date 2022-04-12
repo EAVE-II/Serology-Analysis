@@ -10,6 +10,8 @@ df_qcovid <- readRDS("/conf/EAVE/GPanalysis/data/cleaned_data/QCOVID_feb22.rds")
 
 df_qcovid <- df_qcovid %>% dplyr::filter(EAVE_LINKNO %in% df_serology$EAVE_LINKNO)
 
+print (nrow(qcovid))
+
 df_nrisks <- df_qcovid[,c('EAVE_LINKNO','n_risk_gps')]
 
 df_ana <- df_serology %>% dplyr::left_join(df_nrisks) %>% 
