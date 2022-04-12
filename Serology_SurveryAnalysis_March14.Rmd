@@ -20,16 +20,47 @@ library(srvyr)
 Loading the datasets
 
 ```{r}
-df_population <- readRDS("/conf/EAVE/GPanalysis/data/EAVE_demographics_SK.rds")
+df_population <- readRDS("/conf/EAVE/GPanalysis/data/lookups/HB2019_pop_lookup.rds")
+df_demographics <- readRDS("/conf/EAVE/GPanalysis/data/EAVE_demographics_SK.rds")
 df_serology_pc <- readRDS("/conf/EAVE/GPanalysis/data/serology_primcare_march22.rds")
 nrow(df_population)
+nrow(df_demographics)
 nrow(df_serology_pc)
 ```
+
+```{r}
+df_population <- readRDS("/conf/EAVE/GPanalysis/data/lookups/HB2019_pop_lookup.rds")
+max(df_population$age)
+```
+
+
+```{r}
+df_population <- readRDS("/conf/EAVE/GPanalysis/data/lookups/HB2019_pop_lookup.rds")
+df_population <- df_population %>% group_by(age,sex_name) %>% summarise(pop = sum(pop)) %>%
+                  mutate(age_group = cut(age,right=FALSE, breaks = c(0,10,20,30,40,50,60,70,80,90,1000),
+                               label=c("0-9", 
+                                       "10-19", 
+                                       "20-29",
+                                       "30-39", 
+                                       "40-49",
+                                       "50-59",
+                                       "60-69",
+                                       "70-79",
+                                       "80-89",
+                                       "90+"))) %>%
+                    mutate(sex = factor(sex_name))
+df_population
+```
+
+```{r}
+sum(df_population$pop)
+```
+
 
 Create population dataframe with factors for different age groups and sex:
 
 ```{r}
-df_population <- df_population %>%
+df_demographics <- df_demographics %>%
   ## ensure that age and sex are factors
   mutate(age_group = cut(ageYear, breaks = c(0,10,20,30,40,50,60,70,80,90,1000),
                              label=c("0-9", 
@@ -43,19 +74,27 @@ df_population <- df_population %>%
                                        "80-89",
                                        "90+"))) %>%
   mutate(sex = factor(Sex))
-nrow(df_population)
+nrow(df_demographics)
 ```
 
 Create groupings for the different populations:
 
 ```{r}
-source_population <- df_population %>%
+source_population <- df_demographics %>%
                      group_by(age_group, sex) %>% 
                      summarise(population = n()) %>% 
                      drop_na()
 source_population
 ```
 
+
+```{r}
+scottish_population <- df_population %>% select(age_group,sex,pop) %>% group_by(age_group, sex) %>%
+                       summarise(population = sum(pop)) %>% 
+                       drop_na()
+                     
+scottish_population
+```
 
 
 ```{r}
@@ -90,7 +129,7 @@ p1 <- source_population %>%
             count = proportion, 
             proportional = TRUE) +
   ## only show the y axis label (otherwise repeated in all three plots)
-  labs(title = "Source population", 
+  labs(title = "Unweighted Source (EAVE-II) Population", 
        y = "", 
        x = "Age group (years)") + 
   ## make the x axis the same for all plots 
@@ -101,30 +140,8 @@ p1
 ```
 
 
-
-Make a new dataframe that is the unique population in the serology samples
-
-
 ```{r}
-survey_data <- df_serology_pc %>% distinct(EAVE_LINKNO, .keep_all = TRUE)  %>% select(EAVE_LINKNO,age,sex) %>%
-                      mutate(sex = factor(sex),
-                             age_group = cut(age, breaks = c(0,10,20,30,40,50,60,70,80,90,120),
-                             label=c("0-9", 
-                                       "10-19", 
-                                       "20-29",
-                                       "30-39", 
-                                       "40-49",
-                                       "50-59",
-                                       "60-69",
-                                       "70-79",
-                                       "80-89",
-                                       "90+"))) 
-nrow(survey_data)
-```
-
-
-```{r}
-max_prop <- 12     # choose the highest proportion you want to show 
+max_prop <- 11     # choose the highest proportion you want to show 
 step <- 5           # choose the space you want beween labels 
 
 ## this part defines vector using the above numbers with axis breaks
@@ -145,20 +162,29 @@ labels <-  c(
     )
 
 
-p2  <- age_pyramid(survey_data, 
-                 age_group = "age_group", 
-                 split_by = "sex",
-                 proportion = TRUE) + 
-  ## only show the x axis label (otherwise repeated in all three plots)
-  labs(title = "Unweighted sample population", 
-       y = "Proportion (%)", 
-       x = "") + 
+p2 <- scottish_population %>%
+  ungroup() %>% 
+  mutate(proportion = population / sum(population)) %>% 
+  ## plot pyramid 
+  age_pyramid(
+            age_group = age_group, 
+            split_by = sex, 
+            count = proportion, 
+            proportional = TRUE) +
+  ## only show the y axis label (otherwise repeated in all three plots)
+  labs(title = "Scottish Population", 
+       y = "", 
+       x = "Age group (years)") + 
   ## make the x axis the same for all plots 
   scale_y_continuous(breaks = breaks, 
     limits = limits, 
     labels = labels)
 p2
+
 ```
+
+
+
 
 Define a function, stolen from https://rdrr.io/github/R4EPI/epikit/src/R/add_weights_strata.R to obtain weights
 
@@ -206,31 +232,314 @@ add_weights_strata <- function(x, p, ...,
 
 ```
 
+
+
+```{r}
+basic_design <- svydesign(id=~1, data=source_population)
+basic_design
+```
+
+```{r}
+colnames(source_population)
+```
+
+```{r}
+scottish_population
+```
+
+```{r}
+pop <- scottish_population
+pop.age <- pop %>% group_by(age_group) %>% summarise(Freq=sum(population))
+pop.sex <- pop %>% group_by(sex) %>% summarise(Freq=sum(population))
+
+```
+
+
+```{r}
+basic_design.rake <- rake(basic_design, list(~age_group,~sex), list(pop.age,pop.sex))
+```
+
+
+```{r}
+weights(basic_design.rake)
+```
+
+
+```{r}
+svytable(~age_group, basic_design.rake, round=TRUE)
+```
+
+```{r}
+svytable(~sex, basic_design.rake, round=TRUE)
+```
+
+
 Use the function to add weights 
 
 ```{r}
-survey_data_with_weights <- add_weights_strata(x = survey_data,
-                                    p = source_population,
+survey_source <- add_weights_strata(x = source_population,
+                                    p = scottish_population,
                                     surv_weight = "surv_weight_strata",
                                     surv_weight_ID = "surv_weight_ID_strata",
                                     age_group, sex) %>%
                                     drop_na(surv_weight_strata)
+head(survey_source,5)
+```
+
+
+
+```{r}
+survey_source.design <- survey_source %>% as_survey_design(ids = 1,      # cluster ids
+                        weights = surv_weight_strata, # weight variable created above
+                        strata = NULL 
+                        )
+survey_source.design
+```
+```{r}
+weights(survey_source.design)
+```
+
+```{r}
+attributes(survey_source.design)
+```
+
+
+```{r}
+
+max_prop <- 12     # choose the highest proportion you want to show 
+step <- 5           # choose the space you want beween labels 
+
+## this part defines vector using the above numbers with axis breaks
+breaks <- c(
+    seq(max_prop/100 * -1, 0 - step/100, step/100), 
+    0, 
+    seq(0 + step / 100, max_prop/100, step/100)
+    )
+
+## this part defines vector using the above numbers with axis limits
+limits <- c(max_prop/100 * -1, max_prop/100)
+
+## this part defines vector using the above numbers with axis labels
+labels <-  c(
+      seq(max_prop, step, -step), 
+      0, 
+      seq(step, max_prop, step)
+    )
+
+
+p3 <- survey_source.design %>% 
+  ## make sure the variables are factors
+  mutate(age_group = factor(age_group), 
+         sex = factor(sex)) %>%
+  age_pyramid(
+    age_group = "age_group",
+    split_by = "sex", 
+    proportion = TRUE) +
+  ## only show the x axis label (otherwise repeated in all three plots)
+  labs(title = "Weighted Source (EAVE-II) Population", 
+       y = "", 
+       x = "")  + 
+  ## make the x axis the same for all plots 
+  scale_y_continuous(breaks = breaks, 
+    limits = limits, 
+    labels = labels)
+p3
+```
+
+```{r}
+as_survey_design(basic_design.rake)
+```
+
+```{r}
+attributes(basic_design.rake)
+```
+
+
+```{r}
+attributes(basic_design)
+```
+
+```{r}
+weights(survey_source.design)
+weights(as_survey_design(basic_design.rake))
+```
+
+
+
+```{r}
+as_survey_design(basic_design.rake) %>% 
+  age_pyramid(
+    age_group = "age_group",
+    split_by = "sex", 
+    proportion = TRUE) +
+  ## only show the x axis label (otherwise repeated in all three plots)
+  labs(title = "Weighted Source (EAVE-II) Population", 
+       y = "", 
+       x = "")  + 
+  ## make the x axis the same for all plots 
+  scale_y_continuous(breaks = breaks, 
+    limits = limits, 
+    labels = labels)
+```
+
+
+
+Make a new dataframe that is the unique population in the serology samples
+
+```{r}
+colnames(df_serology_pc)
+```
+
+
+```{r}
+survey_data <- df_serology_pc %>% distinct(EAVE_LINKNO, .keep_all = TRUE)  %>% select(EAVE_LINKNO,age,sex,SpecimenDate) %>%
+                      mutate(sex = factor(sex),
+                             age_group = cut(age, breaks = c(0,10,20,30,40,50,60,70,80,90,120),
+                             label=c("0-9", 
+                                       "10-19", 
+                                       "20-29",
+                                       "30-39", 
+                                       "40-49",
+                                       "50-59",
+                                       "60-69",
+                                       "70-79",
+                                       "80-89",
+                                       "90+")))  %>%
+                     left_join(df_demographics %>% select(EAVE_LINKNO,hb2019name))
+nrow(survey_data)
+survey_data
+```
+
+```{r}
+odd_group <- survey_data %>% filter(age>9 & age<20)
+nrow(odd_group)
+```
+
+```{r}
+hist(odd_group$SpecimenDate,"months")
+```
+
+
+
+```{r}
+survey_data %>% filter(age>19 & age<30) %>% group_by(hb2019name) %>% summarise(n=n())
+```
+
+
+```{r}
+odd_group %>% group_by(hb2019name) %>% summarise(n=n())
+```
+
+```{r}
+
+ggplot(survey_data, aes(x = age)) +
+  geom_histogram(bins=40,fill = "white", colour = "black") +
+  facet_wrap(hb2019name ~ ., scales = "free", ncol=3) +
+  labs(title = "Unweighted Serology Population", 
+       y = "Number of People", 
+       x = "Age") 
+
+```
+
+
+
+
+```{r}
+max_prop <- 12     # choose the highest proportion you want to show 
+step <- 5           # choose the space you want beween labels 
+
+## this part defines vector using the above numbers with axis breaks
+breaks <- c(
+    seq(max_prop/100 * -1, 0 - step/100, step/100), 
+    0, 
+    seq(0 + step / 100, max_prop/100, step/100)
+    )
+
+## this part defines vector using the above numbers with axis limits
+limits <- c(max_prop/100 * -1, max_prop/100)
+
+## this part defines vector using the above numbers with axis labels
+labels <-  c(
+      seq(max_prop, step, -step), 
+      0, 
+      seq(step, max_prop, step)
+    )
+
+
+p4  <- age_pyramid(survey_data , 
+                 age_group = "age_group", 
+                 split_by = "sex",
+                 proportion = TRUE) + 
+  ## only show the x axis label (otherwise repeated in all three plots)
+  labs(title = "Unweighted Serology Population", 
+       y = "Proportion (%)", 
+       x = "") + 
+  ## make the x axis the same for all plots 
+  scale_y_continuous(breaks = breaks, 
+    limits = limits, 
+    labels = labels)
+p4
+```
+
+
+```{r}
+df_weights <- readRDS("/conf/EAVE/GPanalysis/outputs/temp/CR_Cohort_Weights.rds")
+rm(df_weights)
+```
+
+
+
+Use the function to add weights 
+
+```{r}
+source_population_with_weights <- add_weights_strata(x=source_population, p=scottish_population,
+                                                     surv_weight='w1',
+                                                     surv_weight_ID = "w1_pop",
+                                                     age_group, sex)
+source_population_with_weights
+```
+
+
+```{r}
+
+survey_data_with_weights <- add_weights_strata(x=survey_data, 
+                                               p=scottish_population,
+                                               surv_weight='w1',
+                                               surv_weight_ID = "w1_pop",
+                                               age_group, sex)
+
+survey_data_with_weights <- add_weights_strata(x = survey_data_with_weights,
+                                    p = source_population,
+                                    surv_weight = "w2",
+                                    surv_weight_ID = "w2_demo",
+                                    age_group, sex) %>%
+                                    drop_na(w2)
+
 head(survey_data_with_weights %>% select(-EAVE_LINKNO),5)
 ```
 
-
-
 ```{r}
-survey_design <- survey_data_with_weights %>% as_survey_design(ids = 1,      # cluster ids
-                   weights = surv_weight_strata, # weight variable created above
-                   strata = NULL 
-                  )
+survey_data_with_weights %>% filter(w1_pop == '0-9_M')
 ```
 
 
+```{r}
+survey_data.design <- survey_data_with_weights %>% 
+                      as_survey_design(ids = EAVE_LINKNO,      # cluster ids
+                       weights = c(w1) , # weight variable created above
+                       strata = NULL 
+                      )
+```
+
 
 ```{r}
-p3 <- survey_design %>% 
+svymean( survey_data_with_weights %>% select(age) ,
+         design = survey_data.design )
+```
+
+
+```{r}
+p5 <- survey_data.design %>% 
   ## make sure the variables are factors
   mutate(age_group = factor(age_group), 
          sex = factor(sex)) %>%
@@ -246,13 +555,130 @@ p3 <- survey_design %>%
   scale_y_continuous(breaks = breaks, 
     limits = limits, 
     labels = labels)
-p3
+p5
 ```
 
 
 ```{r}
-require(gridExtra)
-grid.arrange(p1, p2, p3, ncol=2,nrow=2)
+
+p55 <- survey_data %>% filter(hb2019name=='NHS Lanarkshire') %>% 
+  ## make sure the variables are factors
+  mutate(age_group = factor(age_group), 
+         sex = factor(sex)) %>%
+  age_pyramid(
+    age_group = "age_group",
+    split_by = "sex", 
+    proportion = TRUE) +
+  ## only show the x axis label (otherwise repeated in all three plots)
+  labs(title = "Weighted sample population", 
+       y = "", 
+       x = "")  + 
+  ## make the x axis the same for all plots 
+  scale_y_continuous(breaks = breaks, 
+    limits = limits, 
+    labels = labels)
+p55
+```
+
+
+```{r}
+p55 <- subset(survey_data.design,hb2019name=='NHS Lanarkshire') %>% 
+  ## make sure the variables are factors
+  mutate(age_group = factor(age_group), 
+         sex = factor(sex)) %>%
+  age_pyramid(
+    age_group = "age_group",
+    split_by = "sex", 
+    proportion = TRUE) +
+  ## only show the x axis label (otherwise repeated in all three plots)
+  labs(title = "Weighted sample population", 
+       y = "", 
+       x = "")  + 
+  ## make the x axis the same for all plots 
+  scale_y_continuous(breaks = breaks, 
+    limits = limits, 
+    labels = labels)
+p55
+```
+
+
+
+
+```{r}
+max(survey_data_with_weights$w1)
+min(survey_data_with_weights$w1)
+mean(survey_data_with_weights$w1)
+```
+
+
+```{r}
+survey_data_with_weights$full_weight = 0
+
+  
+survey_data.design <- survey_data_with_weights %>% 
+                      as_survey_design(ids = 1,      # cluster ids
+                       weights = full_weight , # weight variable created above
+                       strata = NULL 
+                      )
+```
+
+
+```{r}
+svymean( survey_data_with_weights %>% select(age) ,
+         design = survey_data.design )
+```
+
+
+
+
+```{r}
+
+max_prop <- 15     # choose the highest proportion you want to show 
+step <- 5           # choose the space you want beween labels 
+
+## this part defines vector using the above numbers with axis breaks
+breaks <- c(
+    seq(max_prop/100 * -1, 0 - step/100, step/100), 
+    0, 
+    seq(0 + step / 100, max_prop/100, step/100)
+    )
+
+## this part defines vector using the above numbers with axis limits
+limits <- c(max_prop/100 * -1, max_prop/100)
+
+## this part defines vector using the above numbers with axis labels
+labels <-  c(
+      seq(max_prop, step, -step), 
+      0, 
+      seq(step, max_prop, step)
+    )
+
+
+p6 <- survey_data.design %>% 
+  ## make sure the variables are factors
+  mutate(age_group = factor(age_group), 
+         sex = factor(sex)) %>%
+  age_pyramid(
+    age_group = "age_group",
+    split_by = "sex", 
+    proportion = TRUE) +
+  ## only show the x axis label (otherwise repeated in all three plots)
+  labs(title = "Weighted sample population", 
+       y = "", 
+       x = "")  + 
+  ## make the x axis the same for all plots 
+  scale_y_continuous(breaks = breaks, 
+    limits = limits, 
+    labels = labels)
+p6
+```
+
+```{r}
+grid.arrange(p5,p6)
+```
+
+```{r}
+
 ```
 
 
@@ -265,12 +691,14 @@ base_survey_design_strata <- svydesign(ids = ~1,  # 1 for no cluster ids
 base_survey_design_strata
 ```
 
-
+```{r}
+survey_data_with_weights %>% select(age)
+```
 
 Try out the mean 
 
 ```{r}
-svymean( survey_data_with_weights ,
+svymean( survey_data_with_weights %>% select(age) ,
          design = base_survey_design_strata)
 ```
 

@@ -46,6 +46,44 @@ df_vacc_bd <- df_vacc %>% filter(serology_source!='primary_care_serology')
 
 
 ```{r}
+nrow(df_serology_pc)
+```
+```{r}
+df_unique <- df_serology_pc %>% group_by(EAVE_LINKNO) %>% filter(row_number()==1)
+nrow(df_unique)
+```
+```{r}
+nrow(df_vacc_pc)
+```
+
+```{r}
+nrow(df_unique %>% right_join(df_vacc_pc))
+```
+
+```{r}
+nrow(df_serology_bd)
+nrow(df_serology_bd %>% filter (EAVE_LINKNO %in% df_vacc_bd$EAVE_LINKNO))
+```
+
+
+```{r}
+df_unique <- df_serology_bd %>% group_by(EAVE_LINKNO) %>% filter(row_number()==1)
+nrow(df_unique)
+```
+
+
+```{r}
+nrow(df_unique %>% right_join(df_qcovid_pc))
+```
+
+```{r}
+nrow(df_serology_pc %>% inner_join(df_vacc_pc))
+```
+
+
+
+
+```{r}
 df_ana_pc <- df_serology_pc %>% dplyr::inner_join(df_qcovid_pc) %>% dplyr::inner_join(df_vacc_pc)
 nrow(df_ana_pc)
 nrow(df_serology_pc)
