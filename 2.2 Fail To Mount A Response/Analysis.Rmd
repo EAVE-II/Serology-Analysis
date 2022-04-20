@@ -90,6 +90,8 @@ Create a new dataframe that can be used with GLM .. need to get some char variab
 df_ana <- df %>% filter(!is.na(n_risk_gps)) %>%
           mutate(n_risk_gps_int =  as.factor(as.integer(factor(n_risk_gps,labels=c(1,2,3,4,5)))),
                  outcome = ifelse(QualResult=='Negative',1,0),
+                 outcome_pos = ifelse(IgG>1500,1,0),
+                 outcome_neg = ifelse(IgG<5,1,0),
                  sex = as.factor(ifelse(sex=='M',1,2))) %>% 
          mutate(product = as.integer(factor(d2_product,labels=c(1,2,3))),
                 d2_product = factor(d2_product),
@@ -98,6 +100,13 @@ df_ana <- df %>% filter(!is.na(n_risk_gps)) %>%
                 risk2 = ifelse(n_risk_gps_int==3,1,0),
                 risk3_4 = ifelse(n_risk_gps_int==4,1,0),
                 risk5p = ifelse(n_risk_gps_int==5,1,0)) %>%
+        mutate(age_group = cut(age,right=FALSE, breaks = c(0,20,40,60,80,1000),
+                               label=c("0-20", 
+                                       "20-40", 
+                                       "40-60",
+                                       "60-80", 
+                                       "80+"
+                                       ))) %>%
          select(-QualResult)
 df_ana
 ```
@@ -112,15 +121,32 @@ Check these outcomes for different vaccine products
 df_ana %>% group_by(d2_product,outcome) %>%summarise(n=n())
 ```
 
+
+```{r}
+library(tidyr)
+```
 Make a little summary to see which QCOVID variables have at least one outcome that is 1
 ```{r}
-df_ana %>% filter(outcome==1) %>% summarise(across(where(is.numeric), ~ sum(.x, na.rm = TRUE))) 
+temp <- df_ana %>% filter(outcome_pos==1) %>% select(contains("Q_DIA")) %>% summarise(across(where(is.numeric), ~ sum(.x, na.rm = TRUE))) %>% gather() %>% 
+     filter(value>3)
+temp$key
+
+```
+
+```
+n_risk_gps_int
+age
+```
+```{r}
+formula <- paste0("outcome_pos ~ days_since_vac2  + age  + sex + product + Q_BMI + ",paste0(temp$key,collapse = " + "))
+formula 
 ```
 
 Peform the GLM
 ```{r}
-glmFit <- glm(outcome ~ days_since_vac2  + n_risk_gps_int + age + sex + product + Q_BMI + Q_DIAG_DIABETES_1 + Q_DIAG_RESP_CANCER + Q_DIAG_ASTHMA + Q_DIAG_BLOOD_CANCER + Q_DIAG_CHD + Q_DIAG_COPD + Q_DIAG_EPILEPSY + Q_DIAG_FRACTURE + Q_DIAG_IMMU + Q_DIAG_NEURO + Q_DIAG_PARKINSONS + Q_DIAG_PARKINSONS + Q_DIAG_PULM_RARE + Q_DIAG_PVD + Q_DIAG_RA_SLE + Q_DIAG_SEV_MENT_ILL + Q_DIAG_STROKE + Q_DIAG_VTE
-                  ,family=poisson,data=df_ana)
+
+
+glmFit <- glm(formula,family=poisson,data=df_ana)
 summary(glmFit)
 ```
 
@@ -134,6 +160,11 @@ lookup <- c(
   "n_risk_gps_int4"="3-4 Risk",     
   "n_risk_gps_int5"="5+ Risk",    
   "age"="Age",
+  "age_group"="Age",
+  "age_group20-40"="Age 20-40",
+  "age_group40-60"="Age 40-60",
+  "age_group60-80"="Age 60-80",
+  "age_group80+"="Age 80+",
   "sex2"="Sex (Female)",
   "product"="Vaccine (AstraZeneca)",
   "Q_BMI"="BMI",
@@ -142,7 +173,10 @@ lookup <- c(
   "Q_DIAG_ASTHMA"="Asthma",    
   "Q_DIAG_BLOOD_CANCER"="Blood Cancer",
   "Q_DIAG_CHD"="Coronary Heart Disease ",
-  "Q_DIAG_COPD"="Chronic Obstructive Pulmonary Disease",      
+  "Q_DIAG_COPD"="Chronic Obstructive Pulmonary Disease",   
+  "Q_DIAG_CKD_LEVEL"="Chronic Kidney Disease",
+  "Q_DIAG_AF"="Atrial Fibrillation",
+  "Q_DIAG_CCF"="Heart Failure",
   "Q_DIAG_EPILEPSY"="Epilepsy",     
   "Q_DIAG_FRACTURE"="A prior fracture of hip, wrist, spine or humerus",     
   "Q_DIAG_IMMU"="Immune Deficiency",         
@@ -153,7 +187,13 @@ lookup <- c(
   "Q_DIAG_RA_SLE"="Rheumatoid Arthritis",      
   "Q_DIAG_SEV_MENT_ILL"="Severe Mental Health Illness",
   "Q_DIAG_STROKE"="Stroke",      
-  "Q_DIAG_VTE"="Thrombosis or Pulmonary Embolus"
+  "Q_DIAG_VTE"="Thrombosis or Pulmonary Embolus",
+  "Q_DIAG_CEREBRALPALSY"="Cerebralpalsy",
+"Q_DIAG_CIRRHOSIS"="Cirrhosis",
+"Q_DIAG_CONGEN_HD"="Congenital Heart Disease",
+"Q_DIAG_HIV_AIDS"="HIV/Aids",
+"Q_DIAG_PULM_HYPER"="Pulmonary Hypertension",
+"Q_DIAG_DEMENTIA"="Dementia"
 )
 
 tab <- exp(cbind(coef(glmFit), confint(glmFit))) %>% as.data.frame
@@ -165,7 +205,6 @@ names(tab)[3] <- 'UCL'
 
 tab <- tab %>% mutate(key = as.character(lookup[names]))
 tab
-
 
 
 ```

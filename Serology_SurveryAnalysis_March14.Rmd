@@ -23,9 +23,11 @@ Loading the datasets
 df_population <- readRDS("/conf/EAVE/GPanalysis/data/lookups/HB2019_pop_lookup.rds")
 df_demographics <- readRDS("/conf/EAVE/GPanalysis/data/EAVE_demographics_SK.rds")
 df_serology_pc <- readRDS("/conf/EAVE/GPanalysis/data/serology_primcare_march22.rds")
+df_serology_bd <- readRDS("/conf/EAVE/GPanalysis/data/serology_snbts_march22.rds")
 nrow(df_population)
 nrow(df_demographics)
 nrow(df_serology_pc)
+nrow(df_serology_bd)
 ```
 
 ```{r}
@@ -480,6 +482,65 @@ p4  <- age_pyramid(survey_data ,
     labels = labels)
 p4
 ```
+
+
+```{r}
+survey_data <- df_serology_bd %>% distinct(EAVE_LINKNO, .keep_all = TRUE)  %>% select(EAVE_LINKNO,age,sex) %>%
+                      mutate(sex = factor(sex),
+                             age_group = cut(age, breaks = c(0,10,20,30,40,50,60,70,80,90,120),
+                             label=c("0-9", 
+                                       "10-19", 
+                                       "20-29",
+                                       "30-39", 
+                                       "40-49",
+                                       "50-59",
+                                       "60-69",
+                                       "70-79",
+                                       "80-89",
+                                       "90+")))  %>%
+                     left_join(df_demographics %>% select(EAVE_LINKNO,hb2019name))
+nrow(survey_data)
+survey_data
+```
+
+```{r}
+max_prop <- 15     # choose the highest proportion you want to show 
+step <- 5           # choose the space you want beween labels 
+
+## this part defines vector using the above numbers with axis breaks
+breaks <- c(
+    seq(max_prop/100 * -1, 0 - step/100, step/100), 
+    0, 
+    seq(0 + step / 100, max_prop/100, step/100)
+    )
+
+## this part defines vector using the above numbers with axis limits
+limits <- c(max_prop/100 * -1, max_prop/100)
+
+## this part defines vector using the above numbers with axis labe
+labels <-  c(
+      seq(max_prop, step, -step), 
+      0, 
+      seq(step, max_prop, step)
+    )
+
+
+p4  <- age_pyramid(survey_data , 
+                 age_group = "age_group", 
+                 split_by = "sex",
+                 proportion = TRUE) + 
+  ## only show the x axis label (otherwise repeated in all three plots)
+  labs(title = "Unweighted Serology Population", 
+       y = "Proportion (%)", 
+       x = "") + 
+  ## make the x axis the same for all plots 
+  scale_y_continuous(breaks = breaks, 
+    limits = limits, 
+    labels = labels)
+grid.arrange(p4,p4,ncol=2,nrow=2)
+```
+
+
 
 
 ```{r}
