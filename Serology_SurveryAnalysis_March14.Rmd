@@ -473,14 +473,14 @@ p4  <- age_pyramid(survey_data ,
                  split_by = "sex",
                  proportion = TRUE) + 
   ## only show the x axis label (otherwise repeated in all three plots)
-  labs(title = "Unweighted Serology Population", 
+  labs(title = "", 
        y = "Proportion (%)", 
-       x = "") + 
+       x = "Age") + 
   ## make the x axis the same for all plots 
   scale_y_continuous(breaks = breaks, 
     limits = limits, 
-    labels = labels)
-p4
+    labels = labels)+ theme_minimal()
+p4 
 ```
 
 
