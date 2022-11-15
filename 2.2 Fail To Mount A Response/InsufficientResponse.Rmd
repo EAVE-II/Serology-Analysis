@@ -343,38 +343,10 @@ eavehelpers::plot_ratios(pc.modelB.gamFit.or %>% rename(Nominal=OR) %>%
 
 ```{r}
 bd.modelB.gamFit.or <- eavehelpers::get_or_from_gam(bd.modelB.gamFit) %>% filter(is.finite(UCL))
-bd.modelB.gamFit.or %>% filter(var=='cat') %>% select(label,level,OR,LCL,UCL) 
+bd.modelB.gamFit.or %>% select(label,level,OR,LCL,UCL) 
 ```
 
 
-```{r}
-bd.modelB.df %>% filter(stage<3) %>% group_by(cat,insufficient_response) %>% summarise(n=n())
-```
-
-```{r}
-temp %>% filter(stage<3 & n_risk_gps>0) %>% group_by(cat,outcome) %>% summarise(n=n())
-```
-
-```{r}
-bd.modelB.df %>% ggplot(aes(x=age)) + geom_histogram()
-```
-
-
-```{r}
-bd.modelB.gam.formula
-```
-
-
-```{r,fig.height = 3, fig.width = 9}
-
-f <- "insufficient_response ~ s(age) +  cat "
-
-bd.modelB.gamFit <- eavehelpers::perform_gam(bd.modelB.df
-                                             ,as.formula(f))
-bd.modelB.gamFit.or <- eavehelpers::get_or_from_gam(bd.modelB.gamFit) 
-
-eavehelpers::plot_ratios(bd.modelB.gamFit.or %>% rename(Nominal=OR))
-```
 
 ```{r}
 plot_gam(bd.modelB.gamFit,'age',var_ref=40,list(cat=levels((bd.modelB.df%>% filter(stage<3))$cat))) + 
