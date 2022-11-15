@@ -1,0 +1,56 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+df_ana <- load_pc()
+data <- attributes(df_ana)$meta
+labels(data)
+```
+
+```{r}
+DiagrammeR::mermaid("
+graph LR
+  A-->B
+  A-->C
+  C---E
+  E---B
+  C-->D
+  B-->F
+")
+
+phsstyles::phs_colours()
+phsstyles::phs_colours('phs-liberty-10')
+
+DiagrammeR::grViz("
+digraph graph2  {
+
+graph [layout = dot, overlap = false]
+
+# node definitions with substituted label text
+node [shape = rectangle, width = 4, style=filled, color='@@5'] 
+start [style = invis ]
+a [label = '@@1']
+b [label = '@@2']
+c [label = '@@3']
+d [label = '@@4']
+
+start -> a [label='15 days after at least one Vaccination '];
+a -> b [label='Valid SIMD'];
+b -> c [label='Valid QCOVID'];
+c -> d [label='Valid BMI'];
+
+
+}
+
+[1]: paste0('N(Total) = ', data$Total$total,' ; N(Impaired) = ',data$Total$nfail,' [',round(data$Total$per,2),'%]')
+[2]: paste0('N(Total) = ', data[['Valid SIMD']]$total,' ; N(Impaired) = ',data[['Valid SIMD']]$nfail,' [',round(data[['Valid SIMD']]$per,2),'%]')
+[3]: paste0('N(Total) = ', data[['Valid QCOVID']]$total,' ; N(Impaired) = ',data[['Valid QCOVID']]$nfail,' [',round(data[['Valid QCOVID']]$per,2),'%]')
+[4]: paste0('N(Total) = ', data[['Valid BMI']]$total,' ; N(Impaired) = ',data[['Valid BMI']]$nfail,' [',round(data[['Valid BMI']]$per,2),'%]')
+[5]: phsstyles::phs_colours('phs-liberty-10')
+")
+
+
+```
+```

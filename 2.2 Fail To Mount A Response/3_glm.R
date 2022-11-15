@@ -33,14 +33,22 @@ perform_glm <- function(model,formula,do_adjusted=TRUE,do_unadjusted=TRUE){
   
   if (do_unadjusted){
     vars <- strsplit(formula,split="~")[[1]][2]
+    outcome <- strsplit(formula,split="~")[[1]][1]
+    print (outcome)
     vars <- strsplit(unlist(gsub(" ","",vars)),split="+",fixed=TRUE)[[1]]
     tab_unadjusted <- NULL
     for (name in vars){
-      formula <- paste0("outcome ~ ",name)
-      glmFit <- glm(formula,family=binomial,data=model)
+      #change this
+      formula <- paste0(outcome," ~ ",name)
+      glmFit <- glm(formula,family=binomial,data=model,na.action=NULL)
       glmFit.summary <- summary(glmFit)
-      p = coef(glmFit.summary)[,"Pr(>|z|)"][[2]]
-      print ( p)
+      print (name)
+      print (formula)
+      print (nrow(glmFit.summary))
+      print (coef(glmFit.summary))
+      p = coef(glmFit.summary)[-1,"Pr(>|z|)"] 
+      p <- as.data.frame(p) 
+      #print ( coef(glmFit.summary)[,"Pr(>|z|)"])
       t <- exp(cbind(coef(glmFit), confint(glmFit))) %>% as.data.frame
       t <- t[-1,]
       
@@ -48,12 +56,14 @@ perform_glm <- function(model,formula,do_adjusted=TRUE,do_unadjusted=TRUE){
       names(t)[2] <- 'uLCL'
       names(t)[3] <- 'uUCL'
       
-      t$p <- p
+      t <- t %>% cbind(p)
       t<- t %>% mutate(p=ifelse(p<0.05,'<0.05',round(p,2)))
-      
+      print ('tt.....')
+      print (t)
       
       n <- as.data.frame.matrix(table(model[[name]],model$outcome)) %>% 
            mutate(percentage=round(100*`1`/`0`,2)) %>% 
+           mutate(total=`0`+`1`,fail=`1`) %>% select(-`0`,-`1`) %>% 
            rownames_to_column('rn') %>%
            mutate(rn=ifelse(rn==1,name,paste0(name,rn))) %>% 
            column_to_rownames('rn')
@@ -64,13 +74,21 @@ perform_glm <- function(model,formula,do_adjusted=TRUE,do_unadjusted=TRUE){
       
       t <- merge(n,t,by=0,all=T) %>%  column_to_rownames('Row.names')
       
+      print ('merged')
+      print (t)
       
       tab_unadjusted = rbind(tab_unadjusted,t)
+      print ('binded')
       
     }
     
     if (do_adjusted) {
-      tab <- cbind(tab,tab_unadjusted)
+      print ('gonna cbind here')
+      print (tab)
+      print (tab_unadjusted)
+      tab_unadjusted$names <- rownames(tab_unadjusted)
+      tab <- tab %>% left_join(tab_unadjusted)
+      print ('worked')
     }
     else {
       tab <- tab_unadjusted
@@ -129,8 +147,9 @@ plot_fit <- function(tab,name,xmin=0.01,xmax=50,adjusted=TRUE,unadjusted=TRUE){
   return (p)
 }
 
-plot_simple <- function(tab,xmin=0.01,xmax=50){
-  tab$names <- factor(tab$names,levels=tab$names)
+plot_simple <- function(tab,xmin=0.01,xmax=50,labels=F){
+  tab$names <- factor(tab$names,levels=unique(tab$names))
+  print ('here')
   
   p<- ggplot(tab, aes(x=names))+# reorder(names,OR))) + 
         geom_pointrange(aes(y=OR, ymin=LCL, ymax=UCL, fill='Adjusted'), width=.2,alpha=0.7,shape=21,
@@ -144,23 +163,55 @@ plot_simple <- function(tab,xmin=0.01,xmax=50){
         scale_y_log10(breaks=c(0.01,0.1,0.33,1,3,10)) +
         coord_flip(ylim=c(xmin,xmax)) +
         theme_classic() + guides(fill="none")
+  
+  if(labels){
+    p <- p + geom_text(aes(x=names,y=OR,label=names),hjust=0, vjust=0)
+  }
+  
   return (p)
 }
 
-plot_strat <- function(tab){
+
+plot_strat_old <- function(tab,color2='phs-magenta',color3='phs-green'){
   tab$names <- factor(tab$names,levels=unique(tab$names))
   p<- ggplot(tab ,aes(x=names))+#reorder(names,OR))) + 
-    geom_pointrange(aes(y=OR, ymin=LCL, ymax=UCL, fill=strat), width=.2,alpha=0.7,shape=21,
+    geom_pointrange(aes(y=OR, ymin=LCL, ymax=UCL, color=strat), width=.2,
                     position=position_dodge(.9)) +
-    labs(title='',x='',y='OR (95% CI)',fill='') +
+    labs(title='',x='',y='OR (95% CI)',color='') +
+    #scale_fill_manual(values=c(phs_colours("phs-magenta"), phs_colours("phs-blue"))) +
+    scale_color_manual(values=c(phs_colours(color2), phs_colours(color3),phs_colours("phs-blue"))) +
+    #scale_color_manual(values=c(phs_colours("phs-rust"), phs_colours("phs-blue"))) +
     geom_hline(yintercept=c(1), linetype="dashed") +
     #geom_hline(yintercept=c(3) linetype="dotted", alpha=0.5) +
-    geom_vline(xintercept=c(2:100)-0.5, linetype='dotted',alpha=0.8) +
+    geom_vline(xintercept=c(2:100)-0.5, linetype='dotted',alpha=0.8,size=0.1) +
     scale_y_log10() + #limits=c(0.1,50)) +
     coord_flip(ylim=c(0.02,200)) +
     theme_classic()
   return (p)
 }
+
+plot_strat <- function(tab,color2='phs-magenta',color3='phs-green' ){
+  tab$names <- factor(tab$names,levels=unique(tab$names))
+  #tab <- tab %>% mutate(stratcombo = paste0(strat,strat2)) linetype=strat2
+  p<- ggplot(tab ,aes(x=names))+#reorder(names,OR))) + 
+    #fill=stratcombo, shape=21 linetype=strat2
+    geom_pointrange(aes(y=OR, ymin=LCL, ymax=UCL, color=strat ), width=.2) +#
+                    #position=position_dodge(.9)) +
+    labs(title='',x='',y='OR (95% CI)',color='') +
+    scale_linetype_manual(values=c('solid','dashed')) + 
+    scale_color_manual(values=c(phs_colours("phs-blue"),phs_colours('phs-magenta'), 'white','white'))+
+    #scale_fill_manual(values=c(phs_colours("phs-blue"),'white',phs_colours('phs-magenta'),'white')) + 
+    geom_hline(yintercept=c(1), linetype="dashed") +
+    geom_vline(xintercept=c(2:100)-0.5, linetype='dotted',alpha=0.8,size=0.1) +
+    scale_y_log10() + #limits=c(0.1,50)) +
+    coord_flip(ylim=c(0.02,200)) +
+    theme_classic()
+  return (p)
+}
+
+
+
+
 
 #modelA %>% group_by(outcome) %>% summarise(n=n())
 #modelA.formula <- paste0("outcome ~ ageYear + Q_BMI + Sex + n_risk_gps  + product_binary + stage ")
@@ -431,3 +482,64 @@ modelA_2.p
 
 modelA_3.p <- perform_glm(modelA_3,modelA_3.formula)
 modelA_3.p
+
+
+
+
+
+modelC <- df_ana %>% #filter(n_risk_gps>0) %>% 
+  constrast_code() %>% filter(stage=='2+') %>% droplevels() %>% 
+  filter(cat!='AZ-AZ-AZ' & cat!='mixed 2 doses') %>% droplevels() 
+
+max(modelC$days_since_last_vac)
+
+modelC$days_since_last_vac = factor(cut(modelC$days_since_last_vac, breaks = c(0,30,50,100,150,200), right = T, 
+                                        labels = c("15-30","30-50","50-100","100-150","150-200")),
+                                    levels=c("50-100","15-30","30-50","100-150","150-200"))
+
+min(modelC$days_since_first_measurement)
+max(modelC$days_since_first_measurement)
+
+modelC$days_since_first_measurement = factor(cut(modelC$days_since_first_measurement, breaks = c(0,100,200,300,1000), right = T, 
+                                                 labels = c("0-100","100-200","200-300","300-400")),
+                                             levels=c("100-200","0-100","100-300","300-400"))
+
+
+df_ana %>% group_by(stage,outcome) %>% summarise(n=n())
+
+df_ana %>% constrast_code() %>% group_by(stage,outcome) %>% summarise(n=n())
+
+modelC %>% group_by(outcome) %>% summarise(n=n())
+modelC %>% group_by(ageYear,outcome) %>% filter(n() >= 5) %>% summarise(n=n())
+
+
+formula <- paste0("outcome ~ ageYear + Sex  +  Q_BMI + simd2020v2_sc_quintile + n_risk_gps +
+                      shielding + immuno_supp +
+                      prior_infection   +
+                      cat ")
+
+tab <- perform_glm(modelC,formula)
+tab
+
+plot_fit(tab,"test")
+
+
+
+
+qnames <- get_qnames(modelC,n=5)
+qnames
+
+formula <- paste0("outcome ~ ageYear + Sex + Q_BMI  + simd2020v2_sc_quintile  + 
+                      ",paste0(qnames,collapse = " + ")," +
+                      shielding  + immuno_supp +
+                      prior_infection +
+                      cat ")
+
+formula
+
+tab <- perform_glm(modelC,formula,do_adjusted=TRUE,do_unadjusted = FALSE)
+tab
+plot_simple(tab)
+
+
+n <- nrow(df_ana_pc)
