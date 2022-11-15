@@ -279,6 +279,7 @@ pc.modelB.gam.formula <- paste0(
   " + s(days_since_last_vac) ", #days since the last vaccination, defined by the stage the measurement was taken at
   " + ",paste0(pc.modelB.qnames,collapse = " + "), #main exposure - the individiual qcovid risk groups
   " + Sex + Q_BMI ", # confounding variables for Sex and BMI
+  " + simd2020v2_sc_quintile",#force the inclusion of SIMD actually..
   " + ",paste0(pc.modelB.vars,collapse = " + ") #other confounding from variables named and checked above
   ) 
 
@@ -290,7 +291,7 @@ pc.modelB.gam.formula
 ```{r}
 bd.modelB.gam.formula <- paste0(
   "insufficient_response ~ ", #outcome varialbe
-  " s(age,by=cat) + cat", #age is a spline stratified by cat (product-dose categories)
+  " s(age,by=cat,k=3) + cat", #age is a spline stratified by cat (product-dose categories)
   " + s(days_since_first_measurement) ", #spline of the number of days since the start of the pandemic/first-measurement
   " + s(days_since_last_vac) ", #days since the last vaccination, defined by the stage the measurement was taken at
   " + ",paste0(bd.modelB.qnames,collapse = " + "), #main exposure - the individiual qcovid risk groups
