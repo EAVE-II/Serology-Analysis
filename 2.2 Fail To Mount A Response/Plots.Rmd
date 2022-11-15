@@ -1,0 +1,84 @@
+```{r}
+library(ggplot2)
+library(splines)
+library(dplyr)
+library(survival)
+```
+
+
+```{r}
+df_ana_2 <- df_ana %>% mutate(x=days_since_last_vac)
+```
+
+```{r, fig.height = 5, fig.width = 10}
+
+var <- "x"
+
+layout.matrix <- matrix(c(1,1,2,3,1,1,4,5), 2, 4, byrow = TRUE)
+
+newdata <- data.frame(V1=seq(min(df_ana_2[var]), max(df_ana_2[var]),len=500))
+names(newdata)[names(newdata) == "V1"] <- var
+newdata
+
+
+formula <- as.formula(paste0("outcome ~ ",var))
+
+layout(layout.matrix)
+
+fit <- glm(paste0("outcome ~ ",var),family=binomial,data=df_ana_2)
+
+#use fitted model to predict values of vs
+newdata$outcome = predict(fit, newdata, type="response")
+
+#plot logistic regression curve
+plot(formula, data=df_ana_2, col="steelblue",main=paste0('outcome ~ ',var))
+lines(formula, newdata, lwd=2)
+
+
+f <-  paste0("outcome ~ pspline(",var,",df=2)")
+fit <- glm(as.formula(f),family=binomial,data=df_ana_2)
+#use fitted model to predict values of vs
+newdata$outcome = predict(fit, newdata, type="response")
+#plot logistic regression curve
+plot(formula, data=df_ana_2, col="steelblue",main=f)
+lines(formula, newdata, lwd=2)
+
+
+f <-  paste0("outcome ~ pspline(",var,",df=0)")
+fit <- glm(as.formula(f),family=binomial,data=df_ana_2)
+#use fitted model to predict values of vs
+newdata$outcome = predict(fit, newdata, type="response")
+#plot logistic regression curve
+plot(formula, data=df_ana_2, col="steelblue",main=f)
+lines(formula, newdata, lwd=2)
+
+f <-  paste0("outcome ~ bs(",var,",df=2)")
+fit <- glm(as.formula(f),family=binomial,data=df_ana_2)
+#use fitted model to predict values of vs
+newdata$outcome = predict(fit, newdata, type="response")
+#plot logistic regression curve
+plot(formula, data=df_ana_2, col="steelblue",main=f)
+lines(formula, newdata, lwd=2)
+
+
+f <-  paste0("outcome ~ bs(",var,",df=10)")
+fit <- glm(as.formula(f),family=binomial,data=df_ana_2)
+#use fitted model to predict values of vs
+newdata$outcome = predict(fit, newdata, type="response")
+#plot logistic regression curve
+plot(formula, data=df_ana_2, col="steelblue",main=f)
+lines(formula, newdata, lwd=2)
+
+
+
+
+```
+
+
+```{r}
+
+p<-ggplot(df_ana_3, aes(x=x, y=outcome)) +
+  geom_point(alpha=.5) +
+  stat_smooth(method="glm", se=FALSE, method.args = list(family=binomial))
+p
+```
