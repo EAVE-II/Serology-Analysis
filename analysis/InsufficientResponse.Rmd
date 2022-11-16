@@ -167,7 +167,7 @@ eavehelpers::plot_ratios(bd.modelA.gamFit.or %>% rename(Nominal=OR))
 ```
 
 ```{r}
-modelA.gamFit.or <- pc.modelA.gamFit.or %>% mutate(cohort='Primary Care') %>% rbind(bd.modelA.gamFit.or %>% mutate(cohort='Blood Donors') ) %>%
+modelA.gamFit.or <- pc.modelA.gamFit.or %>% mutate(cohort='Primary Care') %>% rbind(bd.modelA.gamFit.or %>% mutate(cohort='Blood Donors') ) %>% rename(Nominal=OR)
 saveRDS(modelA.gamFit.or,paste0(output_folder,'/modelA_gamFit_OR.rds'))
 
 eavehelpers::display_ratios_table(modelA.gamFit.or)
@@ -267,9 +267,33 @@ summary(pc.modelB.gamFit)
 
 
 ```{r}
+attr(pc.modelB.gamFit,'unadjusted') <- eavehelpers::calculate_unadjusted_gam(pc.modelB.df,
+                                                                              as.formula(pc.modelB.gam.formula))
+labels(attributes(pc.modelB.gamFit)$unadjusted)
+```
+
+```{r}
 bd.modelB.gamFit <- eavehelpers::perform_gam(bd.modelB.df,as.formula(bd.modelB.gam.formula))
 summary(bd.modelB.gamFit)
 ```
+
+
+```{r}
+attr(bd.modelB.gamFit,'unadjusted') <- eavehelpers::calculate_unadjusted_gam(bd.modelB.df,
+                                                                              as.formula(bd.modelB.gam.formula))
+labels(attributes(bd.modelB.gamFit)$unadjusted)
+```
+
+
+
+### Save the fitted models 
+
+Make a temporary save of the GAM objects incase we ever need to open them for future comparisons/checks.
+```{r}
+saveRDS(pc.modelB.gamFit,paste0(output_folder,'/modelB_pc_gamFit.rds'))
+saveRDS(bd.modelB.gamFit,paste0(output_folder,'/modelB_bd_gamFit.rds'))
+```
+
 
 
 
