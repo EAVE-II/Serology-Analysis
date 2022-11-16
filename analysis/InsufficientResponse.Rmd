@@ -5,47 +5,18 @@ output: html_notebook
 
 
 
-### Setup
+## Initial setup
 
 ```{r}
-library(dplyr)
-library(tidyr)
+library(eavehelpers)
 library(ggplot2)
 library(phsstyles)
-library(lemon)
-library(eavehelpers)
 ```
+
 
 ### Load Data
 
-Use the helper function to load up the recommended, stable datasets needed for this analysis
-```{r}
-eave.data <- eavehelpers::load_recommended_datasets() 
-labels(eave.data)
-```
-
-create two dataframes that join the two serology datasets up with other EAVE-II files
-```{r}
-data.pc <- eavehelpers::serology_vaccine_analysis.create_dataframe(eave.data,'serology_primary_care')
-data.bd <- eavehelpers::serology_vaccine_analysis.create_dataframe(eave.data,'serology_blood_donors')
-```
-
-```{r}
-attributes(data.pc)$meta
-```
-
-
-```{r}
-attributes(data.bd)$meta
-```
-
-
-
-```{r}
-saveRDS(data.pc,"/conf/EAVE/GPanalysis/data/temp/fail_to_mount_pc_3.rds")
-saveRDS(data.bd,"/conf/EAVE/GPanalysis/data/temp/fail_to_mount_bd_3.rds")
-```
-
+See notebook called 'LoadData.Rmd' for how the analysis dataframes were created:
 
 ```{r}
 data.pc <- readRDS("/conf/EAVE/GPanalysis/data/temp/fail_to_mount_pc_3.rds")
@@ -55,43 +26,12 @@ print (nrow(data.bd))
 ```
 
 
+Create an output folder for the date we are running the analysis.
+
 ```{r}
 output_folder <- file.path("results", Sys.Date())
 dir.create(output_folder, showWarnings = TRUE)
 ```
-
-
-```{r}
-ggplot(data.pc , aes(x=IgG,fill=as.factor(QualResult))) +
-  #geom_histogram(position = "stack", bins=30) +
-  geom_histogram(position = "stack", bins=30, data=subset(data.pc, QualResult == 'Negative'), aes(fill='Negative')) +
-  #geom_histogram(position = "stack", bins=30, data=subset(data.pc, QualResult == 'Equivocal'), aes(fill='Equivocal')) +
-  geom_histogram(position = "stack", bins=30, data=subset(data.pc, QualResult == 'Positive'), aes(fill='Positive')) +
-  labs(title='Dose',x="Antibody Levels [IgG]", y="Number of Samples", fill="Result") +
-  scale_fill_manual(values = phs_colours(c("phs-blue", "phs-purple"))) +
-  theme(aspect.ratio = 0.5)  +
-  scale_y_log10() +
-  scale_x_log10() +
-  facet_wrap(. ~ stage)
-```
-
-```{r}
-ggplot(data.bd , aes(x=IgG,fill=as.factor(QualResult))) +
-  geom_histogram(position = "stack", bins=30) +
-  #geom_histogram(position = "stack", bins=30, data=subset(data.bd, QualResult == 'Negative'), aes(fill='Negative')) +
-  #geom_histogram(position = "stack", bins=30, data=subset(data.bd, QualResult == 'Equivocal'), aes(fill='Equivocal')) +
-  geom_histogram(position = "stack", bins=30, data=subset(data.bd, QualResult == 'Positive'), aes(fill='Positive')) +
-  labs(title='Dose',x="Antibody Levels [IgG]", y="Number of Samples", fill="Result") +
-  scale_fill_manual(values = phs_colours(c("phs-magenta","phs-blue", "phs-purple"))) +
-  theme(aspect.ratio = 0.5)  +
-  scale_y_log10() +
-  scale_x_log10() +
-  facet_wrap(. ~ stage)
-```
-
-
-
-
 
 
 ## Model A
@@ -104,21 +44,7 @@ bd.modelA.df <- eavehelpers::get_modelA_df(data.bd)
 ```
 
 
-
-
-```{r,fig.height = 15, fig.width = 11}
-pc.ages <- pc.modelA.df %>% select(age,Sex) %>% group_by(age,Sex) %>%
-                 summarise(Pop=n()) %>% arrange(Pop,Sex)
-
-ggplot(pc.ages, 
-       mapping = aes(x = ifelse(Sex == "M", -Pop, Pop), 
-                     y = as.factor(age), fill = Sex)) +
-  scale_fill_discrete_phs(palette='all') + 
-    scale_x_symmetric(labels = abs) +
-  labs(x='Number of studies',y='Age') +
-  geom_col() 
-
-```
+### Get variables to use in the models
 
 
 Perform a check on the confounding variables we want to use for modelA... 
@@ -141,11 +67,13 @@ bd.modelA.vars <- bd.modelA.df %>%
 print (bd.modelA.vars)
 ```
 
+### Construct formulas for the models
+
 
 ```{r}
 pc.modelA.gam.formula <- paste0(
   "insufficient_response ~ ", #outcome varialbe
-  " s(age,by=cat) + cat", #age is a spline stratified by cat (product-dose categories)
+  " s(age,by=cat,k=5) + cat", #age is a spline stratified by cat (product-dose categories)
   " + s(days_since_first_measurement) ", #spline of the number of days since the start of the pandemic/first-measurement
   " + s(days_since_last_vac) ", #days since the last vaccination, defined by the stage the measurement was taken at
   " + n_risk_gps ", #main exposure - number of QCOVID risk groups
@@ -161,7 +89,7 @@ pc.modelA.gam.formula
 ```{r}
 bd.modelA.gam.formula <- paste0(
   "insufficient_response ~ ", #outcome varialbe
-  " s(age,by=cat) + cat", #age is a spline stratified by cat (product-dose categories)
+  " s(age,by=cat,k=5) + cat", #age is a spline stratified by cat (product-dose categories)
   " + s(days_since_first_measurement) ", #spline of the number of days since the start of the pandemic/first-measurement
   " + s(days_since_last_vac) ", #days since the last vaccination, defined by the stage the measurement was taken at
   " + n_risk_gps ", #main exposure - number of QCOVID risk groups
@@ -175,30 +103,57 @@ bd.modelA.gam.formula
 ```
 
 
+### Fit the GAMs
 
 ```{r}
 pc.modelA.gamFit <- eavehelpers::perform_gam(pc.modelA.df,as.formula(pc.modelA.gam.formula))
 summary(pc.modelA.gamFit)
 ```
 
+Use a helper function to perform the GAM fit unadjusted (each variable individually)
+```{r}
+attr(pc.modelA.gamFit,'unadjusted') <- eavehelpers::calculate_unadjusted_gam(pc.modelA.df,
+                                                                              as.formula(pc.modelA.gam.formula))
+labels(attributes(pc.modelA.gamFit)$unadjusted)
+```
 
+No the adjusted odds ratios for model A..
 ```{r}
 bd.modelA.gamFit <- eavehelpers::perform_gam(bd.modelA.df,as.formula(bd.modelA.gam.formula))
 summary(bd.modelA.gamFit)
 ```
 
+Get the unadjusted numbers for the blood donors
+```{r}
+attr(bd.modelA.gamFit,'unadjusted') <- eavehelpers::calculate_unadjusted_gam(bd.modelA.df,
+                                                                              as.formula(bd.modelA.gam.formula))
+labels(attributes(bd.modelA.gamFit)$unadjusted)
+```
 
 
+
+### Save the fitted models 
+
+Make a temporary save of the GAM objects incase we ever need to open them for future comparisons/checks.
+```{r}
+saveRDS(pc.modelA.gamFit,paste0(output_folder,'/modelA_pc_gamFit.rds'))
+saveRDS(bd.modelA.gamFit,paste0(output_folder,'/modelA_bd_gamFit.rds'))
+```
+
+
+### ORs (linear variables)
+
+Extract the Odds Ratios (ORs) for the parametric variables (linear variables) used from the GAM
 ```{r}
 pc.modelA.gamFit.or <- eavehelpers::get_or_from_gam(pc.modelA.gamFit) 
-pc.modelA.gamFit.or %>% select(label,level,OR,LCL,UCL)
+pc.modelA.gamFit.or %>% select(label,level,OR,uOR)
 ```
 
 
 
 ```{r}
 bd.modelA.gamFit.or <- eavehelpers::get_or_from_gam(bd.modelA.gamFit) %>% filter(is.finite(UCL))
-bd.modelA.gamFit.or %>% select(label,level,OR,LCL,UCL)
+bd.modelA.gamFit.or %>% select(level,OR,uOR)
 ```
 
 
@@ -213,7 +168,6 @@ eavehelpers::plot_ratios(bd.modelA.gamFit.or %>% rename(Nominal=OR))
 
 ```{r}
 modelA.gamFit.or <- pc.modelA.gamFit.or %>% mutate(cohort='Primary Care') %>% rbind(bd.modelA.gamFit.or %>% mutate(cohort='Blood Donors') ) %>%
-                    rename(Nominal=OR)
 saveRDS(modelA.gamFit.or,paste0(output_folder,'/modelA_gamFit_OR.rds'))
 
 eavehelpers::display_ratios_table(modelA.gamFit.or)

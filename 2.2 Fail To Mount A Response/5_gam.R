@@ -692,7 +692,7 @@ plot_gam(pc.modelA.gamFit,'days_since_last_vac',var_ref=15) +
 
 
 temp <-  pc.modelB.gamFit.or %>% select(names) %>% full_join(bd.modelB.gamFit.or) %>% mutate(OR=paste0(round(OR,2)," (",round(LCL,2)," - ", round(UCL,2),")")) %>% 
-         select(original,names,OR) %>% left_join(bd.modelB.gamFit.uor %>% 
+         select(original,names,OR) %>% left_join(bd.modelB.gamFit %>% 
                                           mutate(OR=paste0(round(OR,2)," (",round(LCL,2)," - ", round(UCL,2),")")) %>% 
                                           rename(uOR=OR) %>% select(original,names,uOR)) %>%
          map_df(rev) %>%
