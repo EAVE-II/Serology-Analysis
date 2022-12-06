@@ -189,7 +189,7 @@ df_ana_bd %>% ggplot(aes(x=IgG,fill=as.factor(outcome))) +
 create_modelC <- function(df_ana,f,df_outcome,split=T){
   
 
-  modelC <- df_ana %>%  contrast_code() %>% select(EAVE_LINKNO,age,ageYear,Sex,IgG,outcome,shielding,
+  modelC <- df_ana %>%  contrast_code() %>% select(EAVE_LINKNO,age,ageYear,Sex,IgG,insufficient_response,shielding,
                                                     ch_resident,immuno,simd2020v2_sc_quintile,
                                                     Sampledate_iso,Q_BMI,n_risk_gps,immuno,
                                                     d1_datetime,d2_datetime,d3_datetime,d4_datetime,
@@ -229,7 +229,7 @@ create_modelC <- function(df_ana,f,df_outcome,split=T){
            mutate(outcome_hosp = ifelse(is.na(days_since_sample),0,1))%>%
            mutate(days_since_measurement = as.numeric(as.Date(ADMISSION_DATE) - as.Date(Sampledate_iso),units='days' )) %>%
            mutate_at(c("ADMISSION_DATE","Sampledate_iso"),as.Date) %>%
-           mutate_at(c("outcome","ch_resident","shielding"),~as.factor(ifelse(.==1,'Yes','No'))) %>%
+           mutate_at(c("insufficient_response","ch_resident","shielding"),~as.factor(ifelse(.==1,'Yes','No'))) %>%
            mutate(
              t1=as.numeric(Sampledate_iso - as.Date(min_date),units='days'),
              t2=ifelse(outcome_hosp==1,
@@ -292,7 +292,7 @@ f.pc <- base::c('Undetectable'=0.,'Insufficient'=4.82,'Below Average'=33.3,'Aver
 f.bd <- base::c('Undetectable'=-1.,'Insufficient'=0.11,'Below Average'=0.7,'Average'=5,'Above Average'=8.5)
 
 
-pc.modelC.infect <- create_modelC(df_ana_pc,f.pc,df_infect,split=F)# %>%
+pc.modelC.infect <- create_modelC(df_ana_pc,f.pc,df_infect,split=F) %>%
                      left_join(df_demo %>% as_tibble %>% select(EAVE_LINKNO,ur6_2016_name) %>% 
                                filter(!is.na(ur6_2016_name)) %>%
                                mutate(ur6_2016_name=as.factor(ur6_2016_name)) %>% droplevels)
