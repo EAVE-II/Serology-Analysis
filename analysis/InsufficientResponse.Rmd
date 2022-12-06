@@ -7,13 +7,12 @@ output: html_notebook
 
 ## Initial setup
 
+Import the eavehelpers package we have locally, plus any extra packages that we need for making plots etc. 
+
 ```{r}
 library(eavehelpers)
 library(ggplot2)
 library(phsstyles)
-
-
-
 ```
 
 
@@ -39,7 +38,8 @@ dir.create(output_folder, showWarnings = TRUE)
 
 ## Model A
 
-Build analysis dataframes
+Build analysis dataframes for the two cohorts that we'll use for model of type-A.
+We use the helper functions that take the input dataframes from the cohorts we build and they do some extra data cleaning and coding of variables (mostly it is just converting variables into factor variables that are convienent to use the the GAM fits to calculate ORs with)
 
 ```{r}
 pc.modelA.df <- eavehelpers::get_modelA_df(data.pc)
@@ -48,7 +48,6 @@ bd.modelA.df <- eavehelpers::get_modelA_df(data.bd)
 
 
 ### Get variables to use in the models
-
 
 Perform a check on the confounding variables we want to use for modelA... 
 This function returns the names of the variables that pass the univariable logit glm test fit for the outcome variable
@@ -61,7 +60,8 @@ print (pc.modelA.vars)
 ```
 
 
-Doing this for the blood donors shows how it helps to remove the usage of the ch_resident variable (probably expected for carehome residents)
+Doing this for the blood donors shows how it helps to remove the usage of the ch_resident variable.
+Expected as we shouldn't really be getting care-home residents that are also blood donors.
 ```{r}
 bd.modelA.vars <- bd.modelA.df %>% 
                   select(insufficient_response,prior_infection,
@@ -72,6 +72,8 @@ print (bd.modelA.vars)
 
 ### Construct formulas for the models
 
+
+Build up a formula to use for the GAM fit for primary care attendees ... 
 
 ```{r}
 pc.modelA.gam.formula <- paste0(
@@ -88,6 +90,7 @@ pc.modelA.df <- pc.modelA.df %>% select(stage,all.vars(as.formula(pc.modelA.gam.
 pc.modelA.gam.formula
 ```
 
+Do the same for the blood donors cohort
 
 ```{r}
 bd.modelA.gam.formula <- paste0(
@@ -106,34 +109,37 @@ bd.modelA.gam.formula
 ```
 
 
-### Fit the GAMs
+### Multivariable GAM construction
 
+Perform the fit of the data to the GAM formula that we have constructed and print this out.. 
 ```{r}
 pc.modelA.gamFit <- eavehelpers::perform_gam(pc.modelA.df,as.formula(pc.modelA.gam.formula))
 summary(pc.modelA.gamFit)
 ```
 
-Use a helper function to perform the GAM fit unadjusted (each variable individually)
+### Univariate GAM construction
+
+Use a helper function to perform the fit the data as a univariate gam (each variable individually).
+From these GAM objects (one per variable in the formula) we can use them to calculate unadjusted ORs
+
 ```{r}
 attr(pc.modelA.gamFit,'unadjusted') <- eavehelpers::calculate_unadjusted_gam(pc.modelA.df,
                                                                               as.formula(pc.modelA.gam.formula))
 labels(attributes(pc.modelA.gamFit)$unadjusted)
 ```
 
-No the adjusted odds ratios for model A..
+Do the same for the blood donors... 
 ```{r}
 bd.modelA.gamFit <- eavehelpers::perform_gam(bd.modelA.df,as.formula(bd.modelA.gam.formula))
 summary(bd.modelA.gamFit)
 ```
 
-Get the unadjusted numbers for the blood donors
+Get the univariable (unadjusted) fits for the blood donors
 ```{r}
 attr(bd.modelA.gamFit,'unadjusted') <- eavehelpers::calculate_unadjusted_gam(bd.modelA.df,
                                                                               as.formula(bd.modelA.gam.formula))
 labels(attributes(bd.modelA.gamFit)$unadjusted)
 ```
-
-
 
 ### Save the fitted models 
 
@@ -146,7 +152,8 @@ saveRDS(bd.modelA.gamFit,paste0(output_folder,'/modelA_bd_gamFit.rds'))
 
 ### ORs (linear variables)
 
-Extract the Odds Ratios (ORs) for the parametric variables (linear variables) used from the GAM
+Extract the Odds Ratios (ORs) for the parametric variables (linear variables) used from the GAM.
+Print out the odds ratio and the unadjusted odds ratio
 ```{r}
 pc.modelA.gamFit.or <- eavehelpers::get_or_from_gam(pc.modelA.gamFit) 
 pc.modelA.gamFit.or %>% select(label,level,OR,uOR)

@@ -10,14 +10,26 @@ library(ggtext)
 library(knitr)
 library(kableExtra)
 
-
+#' Helper function that will extract the QCOVID names from a dataframe  
+#' after applying filtering on a condition, 
+#' and requiring there to be >n events with condition
+#' 
+#' It is used to find a QCOVID variables that have >n events after applying a filtering
+#' 
+#' @param df input dataframe object
+#' @param var the name of the variable in the input dataframe to be checked
+#' @param condition the value of the var to be filtered on (default 'Yes')
+#' @param n the number of events required to be present for the filtered condition  (default 5)
+#' @return a list of QCOVID names 
 #' @export
 get_qcovid_names <- function(df,var=insufficient_response,condition='Yes',n=5){
+  #extract the variable
   var <- rlang::quo_name(rlang::enquo(var))
   qnames <- df %>% filter(!!sym(var)==condition) %>% select(contains("Q_DIA")) %>% 
     summarise(across(where(is.factor), ~ sum(.x == 'Yes', na.rm = TRUE))) %>%
     gather() %>% 
     filter(value>=n)
+  #just return the names   
   qnames <- qnames$key
   return (qnames)
 }
@@ -26,33 +38,38 @@ get_qcovid_names <- function(df,var=insufficient_response,condition='Yes',n=5){
 
 #' Work out which variables are good enough to be used for analysis 
 #' based upon how good the p-value is for them when used in a univariate GLM fit with the outcome
+#' @param model the input dataframe model
+#' @param outcome_var the name of the outcome variable (where outcome_var ~ x + y + z)
+#' @param thres the threshold value for the p-value (default 0.1)
+#' @return a list of variable names
 #' @export
 get_vars_to_use <- function(model,outcome_var,thres=0.1){
   
   #get all variables expect the outcome variable
-  variables <- model %>% select(-!!sym(outcome_var)) %>% names() #select(-any_of(c("outcome","ageYear","Sex","n_risk_gps")))  %>% names()
+  variables <- model %>% select(-!!sym(outcome_var)) %>% names() 
 
   dfp <- NULL
   #loop over all variables
   for (name in variables){
-    #perform a quick GLM with the variable
+    #perform GLM with the variable fitted to the outcome variable
     formula <- paste0(outcome_var," ~ ",name)
     glmFit <- tryCatch({
-      glm(formula,family=binomial,data=model)
-    },
-    error=function(e){
-      message(e)
-      return (NULL)
-    })
+        glm(formula,family=binomial,data=model)
+      },
+      error=function(e){
+        message(e)
+        return (NULL)
+      }
+    )
     if(is.null(glmFit)){
       next
     }
     
     glmFit.summary <- summary(glmFit)
-    #get a p-value
+    #get the p-value for this GLM univariate fit
     p = coef(glmFit.summary)[,"Pr(>|z|)"][[2]]
+    #save the pvalue for this variable (name)
     temp <- data.frame(name,p)
-    #names(temp) <- c('name','p')
     dfp = rbind(dfp, temp)
   }
   #return which variables have a p-value less than the specified threshold
@@ -61,6 +78,10 @@ get_vars_to_use <- function(model,outcome_var,thres=0.1){
 }
 
 #' Hacky bit of code to classify product-stage (vaccine dose) combinations
+#' could be done a much better way... but it works... 
+#' should be used on already prepared data
+#' @param stage integer saying which stage of the vaccine was it when the serology measurement was taken
+#' @param d1,d2,d3,d4 vaccine product used at each stage of the vaccine
 #' @export
 calculate_product_category <- function (stage,d1,d2,d3,d4){
   
@@ -68,7 +89,7 @@ calculate_product_category <- function (stage,d1,d2,d3,d4){
   # define variables such that:
   # 0 - vaccines not administered (at time of this stage)
   # 1 - AZ administered (at this stage)
-  # 2 - Anything else (Pfizer, little Moderna) administered (at this stage)
+  # 2 - Anything else (Pfizer, Moderna) administered (at this stage)
   
   d1 = ifelse(d1 == 'Covid-19 Vaccine AstraZeneca',1,2)
   d2 = ifelse(is.na(d2),0,ifelse(d2 == 'Covid-19 Vaccine AstraZeneca',1,2))
@@ -81,6 +102,7 @@ calculate_product_category <- function (stage,d1,d2,d3,d4){
   # e.g. 2211 - two doses AZ followed by 2 doses of non-AZ   
   cat <- as.integer(paste0(d4,d3,d2,d1))
   
+  #convert to more interpretable representation
   cat <- case_when(
     cat==1 ~ 'One dose AZ',
     cat==2 ~ 'One dose Pfizer/Moderna',
@@ -90,6 +112,7 @@ calculate_product_category <- function (stage,d1,d2,d3,d4){
     TRUE ~ 'Mixed 3+ doses (including AZ)'
   )
 
+  #convert to a factor
   cat <- factor(cat,
                 levels = c('Two doses of Pfizer/Moderna',
                            'One dose AZ',
@@ -100,6 +123,10 @@ calculate_product_category <- function (stage,d1,d2,d3,d4){
   return (cat)
 }
 
+#' Helper function to code the key variables used in the serology analysis 
+#' e.g. making factor variables 
+#' @param model 
+#' @return modified model
 #' @export
 code_vars <- function(model){
   
@@ -115,11 +142,13 @@ code_vars <- function(model){
   model <- model %>% 
             mutate_at(vars(one_of('simd2020v2_sc_quintile')), ~relevel(as.factor(.x),'3')) %>% #SIMD=3 as reference
             mutate_at(vars(one_of('ageYear')), ~factor(cut(.x, breaks = c(0,20,40,60,150), right = T, 
-                                                   labels = c("0-19","20-39","40-59","60+")),
-                                               levels=c("40-59","0-19","20-39","60+"))) %>%
-            mutate_at(vars(one_of('Q_BMI')), ~relevel(cut(ifelse((is.na(.x) | .x<5 | .x>80 ),-1,.x), breaks = c(-2,0,20,25,30,80), right = T, 
-                                                  labels = c("Unknown","0-20","20-25","25-30","30+")),ref='20-25')
-    )
+                                                       labels = c("0-19","20-39","40-59","60+")),
+                                                       levels=c("40-59","0-19","20-39","60+"))) %>%
+            mutate_at(vars(one_of('Q_BMI')), ~relevel(cut(ifelse((is.na(.x) | .x<5 | .x>80 ),-1,.x), 
+                                                      breaks = c(-2,0,20,25,30,80), right = T, 
+                                                      labels = c("Unknown","0-20","20-25","25-30","30+")),
+                                                      ref='20-25')
+            )
   
   #create a better variable for the definition of immuno suppressed 
   #we have a duplication from QCOVID and the vaccine record
@@ -127,7 +156,6 @@ code_vars <- function(model){
   #Note: we dropped the Q_COVID - Q_DIAG_IMMU variable as it double counts, 
   #      but is also very rare (so was never used in any analysis)
   model <- model %>%
-          #mutate(immuno = strtoi(paste0(immuno_supp,severely_immuno_supp,0))) %>%
           mutate(immuno = case_when(
                                     (severely_immuno_supp==1) | (Q_DIAG_IMMU>0) ~ 'Severely',
                                     immuno_supp==1 ~ 'Yes',
@@ -145,12 +173,18 @@ code_vars <- function(model){
   return (model)
 }
 
+#' Simple function to get the dataframe for modelA given a cohort dataframe
+#' @param df input data for the cohort
+#' @return cleaned and mutated version of the data for analysis
 #' @export
 get_modelA_df <- function(df){
   require(tidyr)
   return (df %>% code_vars())
 }
 
+#' Simple function to get the dataframe for modelB given a cohort dataframe
+#' @param df input data for the cohort
+#' @return cleaned and mutated version of the data for analysis
 #' @export
 get_modelB_df <- function(df){
   require(tidyr)
@@ -158,32 +192,55 @@ get_modelB_df <- function(df){
 }
 
 
+#' Perform an unadjusted gam fit for each variable in a formula given a dataframe
+#' @param model input dataframe to be fitted to the GAM model
+#' @param formula a full formula for a (possible) multivariate game
 #' @export
 calculate_unadjusted_gam <- function(model,formula){
+  #split the formula (e.g. y ~ x + z) to extract all the individual terms (x,z)
   terms <- labels(terms(formula))
+  #extract the 'outcome' variable, i.e. the y in y ~ x + z + ... 
   outcome <- all.vars(formula)[1]
   fits <- NULL
+  #loop over all terms in the formula 
   for (var in terms){
+    #create a new univariate formula for the variable term
     f <- as.formula(paste0(outcome," ~ ",var))
+    #perform the gam fit with this formula, on the input dataframe
     fit <- perform_gam(model,f)
+    #book the fit results
     fits[[var]] <- fit
   }
+  #return all the fit results
   return (fits);
 }
 
-
-
+#' Perform a GAM fit of a model given a formula 
+#' in the serology GAM analys(es) we always use binomial logistic regression
+#' .. so this is a simple convienence function 
+#' 
+#' @param model input dataframe to be used
+#' @param formula formula string (e.g. y ~ x + z)
 #' @export
 perform_gam <- function(model,formula){
   fit <- gam(formula,family=binomial,data=model)
   return(fit)
 }
 
+#' ..... REDUNDANT FUNCTION......
+#' Extract the parametric terms from a GAM fit
+#' .. these are all variables that are not splines or interactions.. 
+#' @param fit the GAM fit object 
+#' @param model the input dataframe used for the model
 #' @export
 get_pterm_or_from_gam <- function (fit,model) {
+  #extract all parametric term labels
   pterms <- labels(fit$pterms)
   or <- NULL
+  #loop over each term
   for(term in pterms){
+    #extract all possible levels from the varible 
+    #this works best when all these terms are factors (which is what we do for this analysis)
     levs <- levels(model[[term]])
     if (is.null(levs)){
       levs <- unique(sort(model[[term]]))
@@ -191,20 +248,23 @@ get_pterm_or_from_gam <- function (fit,model) {
     else{
       levs <- levels(droplevels(model[[term]]))
     }
+    #get the first level as the reference 
     ref <- levs[1]
+    #get all other levels to calculate ORs with respect to the reference level
     values <- levs[2:length(levs)]
+    #loop over the values
     for (value in values){
-      tor <- or_gam(data = model, model = fit,pred = term, values=c(ref,value))
+      #use the or_gam function to get the ORs (and CIs) of this parametic term
+      tor <- or_gam(data = model, model = fit, pred = term, values=c(ref,value))
+      #book this variable
       or <- or %>% rbind (tor)
     }
   }
+  #do some cleaning up of the mini dataframe used to save the ORs and return 
   or <- or %>% unite('names',sep='',c(predictor,value2)) %>% select(-value1)
   names(or)[2] <- 'OR'
   names(or)[3] <- 'LCL'
   names(or)[4] <- 'UCL'
-  #or <- or %>% mutate( names=ifelse(is.na(as.character(lookup[names])),
-  #                                  ifelse(is.na(as.character(lookup[gsub('.{1}$', '', names)])),names,lookup[gsub('.{1}$', '', names)]),
-  #                                  lookup[names]))
   return (or)
 }
 
@@ -213,6 +273,7 @@ get_pterm_or_from_gam <- function (fit,model) {
 #'  - the original variable it came from
 #'  - the level it corresponds to
 #' This function is for use with factor levels in GAM Fits
+#' @param gamFit GAM fit object from mgcv
 #' @export 
 get_coeff_name_map <- function(gamFit){
   vars <- gamFit$var.summary
@@ -228,6 +289,8 @@ get_coeff_name_map <- function(gamFit){
 }
 
 
+#' Extract ORs from a GAM fit for the parametric variables
+#' @param mod the GAM fit object from mgcv 
 #' @export
 get_or_from_gam <- function(mod, level = 0.95) {
   # a method for extracting confidence intervals and returning a tidy data frame
@@ -235,16 +298,18 @@ get_or_from_gam <- function(mod, level = 0.95) {
   require(mgcv)
   require(dplyr)
   
+  #get the names of all variables used in the GAM
   name_map <- get_coeff_name_map(mod)
-
+  #get unadjusted ORs that should have been already calculated and
+  # added as an attribute to this model 
   unadjusted <- attributes(mod)$unadjusted
 
-  
+  #from the name map, lookup a variable name
   get_var_name <- function(name){
     var <- name_map[name] %>% map(c('var')) %>% as.character
-    #var <- ifelse(is.null(var),'test',var)
     return (var)
   }
+  #get the level name from the name map
   get_level_name <- function(name){
     lev <- name_map[name] %>% map(c('level')) %>% as.character
     return (lev)
@@ -287,18 +352,22 @@ get_or_from_gam <- function(mod, level = 0.95) {
     return (tab)
   }
   
+  #get the odds ratios for all parametric terms in this GAM Fit
   tab <- get_odds(mod)
+  #hacky, but just get back the names of all variables we calculate ORs for
   vars <- unique(tab$var)
   
   utab <- NULL
+  #loop over these variables
   for (var in vars){
+    #get the odds for the univariate gam fits 
     temp <- get_odds(unadjusted[[var]]) %>% select(names,OR,LCL,UCL) %>%
             rename(uOR=OR,uLCL=LCL,uUCL=UCL)
     utab <- rbind(temp,utab)
   }
   
+  #hacky code for building up tables for convienence
   tab <- tab %>% left_join(utab)
-  
   tab <- tab %>% group_by(var) %>% mutate(pos=row_number()+1) %>% ungroup
   references <- do.call(rbind, lapply(unique(tab$var), function(var){
     tibble(var=var,
@@ -344,7 +413,6 @@ fit_gam <- function(gamFit,var,cats = NULL, value = NULL) {
   if(!is.null(value)){
     term_list[[var]] <- value
   }
-  
   
   
   new_data <- expand.grid(term_list)
