@@ -2,10 +2,19 @@
 % Please edit documentation in R/serology_analysis.R
 \name{calculate_product_category}
 \alias{calculate_product_category}
-\title{Hacky bit of code to classify product-stage (vaccine dose) combinations}
+\title{Hacky bit of code to classify product-stage (vaccine dose) combinations
+could be done a much better way... but it works...
+should be used on already prepared data}
 \usage{
 calculate_product_category(stage, d1, d2, d3, d4)
 }
+\arguments{
+\item{stage}{integer saying which stage of the vaccine was it when the serology measurement was taken}
+
+\item{d1, d2, d3, d4}{vaccine product used at each stage of the vaccine}
+}
 \description{
 Hacky bit of code to classify product-stage (vaccine dose) combinations
+could be done a much better way... but it works...
+should be used on already prepared data
 }

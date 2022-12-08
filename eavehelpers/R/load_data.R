@@ -253,3 +253,168 @@ serology_vaccine_analysis.create_dataframe <- function(eave.data,serology_datase
   attr(df,'meta') <- meta
   return (df)
 }
+
+
+
+
+#' Generic to create a dataframe for a cox regression analysis
+#' - given an already built cohort dataframe, we build a new dataframe to link with hospitalisation/death outcomes
+#' @return analysis data frame
+#' @export
+serology_outcome_analysis.prepare_dataframe <- function(df){
+  
+  #calculate the max date as the last admission/death date 
+  max_date <- max((df %>% filter(!is.na(ADMISSION_DATE)))$ADMISSION_DATE)
+  min_date <- min(df$Sampledate_iso)
+  
+  df <- df %>% 
+    mutate(max_date = case_when(   #set the max possible date (end of the experiment)
+      is.na(NRS.Date.Death) ~ as.Date(max_date),   # last data collected
+      TRUE ~ as.Date(NRS.Date.Death))   #  or the date of death (for any reason)
+    ) %>% 
+    mutate(days_since_sample=as.integer(as.Date(ADMISSION_DATE) - as.Date(Sampledate_iso),units='days')) %>% #calcuate days between measurement and outcome
+    mutate(days_since_sample = ifelse(days_since_sample<0,NA,days_since_sample)) %>% #has to be positive (outcome after measurement)
+    group_by(EAVE_LINKNO,Sampledate_iso) %>% arrange(days_since_sample) %>% #might have multiple hosp admissions for each measurement
+    filter(row_number()==1) %>% #take the first admission (if there is any) as the outcome
+    ungroup %>%
+    mutate(outcome = ifelse(is.na(days_since_sample),0,1))%>% #calculate an outcome 
+    #mutate(days_since_measurement = as.numeric(as.Date(ADMISSION_DATE) - as.Date(Sampledate_iso),units='days' )) %>%
+    mutate_at(c("ADMISSION_DATE","Sampledate_iso"),as.Date) %>% #make sure these are dates
+    #mutate_at(c("insufficient_response","ch_resident","shielding"),~as.factor(ifelse(.==1,'Yes','No'))) %>%
+    mutate( #hacky.... calculate some start and end times for the experiment, per serology measurement
+      t1=as.numeric(Sampledate_iso - as.Date(min_date),units='days'), #start date relative to the start of the experiment
+      t2=ifelse(outcome==1, #if the outcome occurs...
+                t1 + days_since_sample, #t2 is defined as the sample date relative to the start of the experiment
+                as.numeric(max_date - as.Date(min_date),units='days' )+1)) %>% #otherwise it is full time (diff of max and min dates)
+    mutate(tv2 = t1 + as.numeric(d2_datetime - as.Date(Sampledate_iso),units='days'), #get the time of the 2nd vaccine
+           tv3 = t1 + as.numeric(d3_datetime - as.Date(Sampledate_iso),units='days'), #get the time of the 3rd vaccine
+           tv4 = t1 + as.numeric(d4_datetime - as.Date(Sampledate_iso),units='days')  #get the time of the 4th vaccine
+    )
+  #%>%
+  #mutate(
+  #days_since_last = case_when( #calculate the numbers of days 
+  #  !is.na(tv4) & tv4>t1 & tv4<t2 ~ t2-tv4,
+  #  !is.na(tv3) & tv3>t1 & tv3<t2 ~ t2-tv3,
+  #  !is.na(tv2) & tv2>t1 & tv2<t2 ~ t2-tv2,
+  #  TRUE ~ 0),
+  #days_since_last = as.factor(case_when( days_since_last==0 ~ 'None',
+  #                                       days_since_last<70 ~ '<150',
+  #                                       #days_since_last<200 ~ '<200',
+  #                                       TRUE ~ '>150')),
+  #calculate the number of additional vaccines (tv2,tv3,tv4) that have occured since [>t1] the serology measurement (but before the outcome [<t2])
+  # additional = as.numeric(!is.na(tv2) & tv2>t1 & tv2<t2) + 
+  #    as.numeric(!is.na(tv3) & tv3>t1 & tv3<t2) + 
+  #    as.numeric(!is.na(tv4) & tv4>t1 & tv4<t2) )
+  
+  
+  #additional code to split on the dates of additional vaccines
+  df <- df %>% mutate(id=row_number()) %>% select(id,everything()) %>%
+    pivot_longer(c("tv2","tv3","tv4"), names_to = "names", values_to = "days") %>%
+    mutate(
+      tt1=t1,
+      tt2=t2,
+      days=ifelse(days>t1 & days<t2,days,NA)
+    ) %>%
+    group_by(id) %>%
+    slice(c(1:n()), n()) %>%
+    filter(row_number()==n() | !is.na(days)) %>%
+    mutate(t1=ifelse(is.na(lag(days)),t1,lag(days)),t2=days) %>%
+    mutate(
+      additional = row_number()-1,
+      outcome = ifelse(row_number()==n(),outcome,0),
+      t2 = ifelse(row_number()==n(),tt2,t2)) %>% 
+    select(-tt1,-tt2,-days,-names) %>%
+    ungroup 
+  
+  return (df);
+}
+
+#' Function to help create the dataframe needed for the hosp/death analysis
+#' - given an already built cohort dataframe, we build a new dataframe to link with hospitalisation/death outcomes
+#'
+#' @param cohort initial dataframe built for a cohort containing the serology data
+#' @param eave.data all EAVE-II recommended datasets
+#' @return analysis data frame
+#' @export
+serology_outcome_analysis.create_hosp_death_dataframe <- function(cohort,eave.data){
+  
+  #find the minimum serology date that was used in the cohort 
+  min_date <- min(cohort$Sampledate_iso)
+
+  #get the hospitalisation records from SMR01
+  df_smr01_covid <- eave.data$smr01_covid %>% filter(ADMISSION_DATE > min_date) %>% #only get admissions occuring after first serology measurement
+                                              filter(ADMISSION_COVID==1) %>% #only select COVID-19 admissions
+                                              select(EAVE_LINKNO,ADMISSION_DATE) %>% #filter the dataframe
+                                              #group_by(EAVE_LINKNO,ADMISSION_DATE) %>%  #find all admissions (should already be sorted by date)
+                                              distinct() %>% #get distinct admissions
+                                              ungroup %>% arrange(EAVE_LINKNO)
+
+  #also get deaths from COVID-19
+  df_deaths_covid <- eave.data$deaths %>%  
+                     filter(UNDERLYING_CAUSE_OF_DEATH=='U071' | UNDERLYING_CAUSE_OF_DEATH =='U072') %>% #filter on covid-19 deaths
+                     mutate(death_date=NRS.Date.Death) %>% 
+                     rename(ADMISSION_DATE=NRS.Date.Death) %>% #rename to make it easier to join with hospital admissions data
+                     mutate(ADMISSION_DATE=as.POSIXct(ADMISSION_DATE))
+  
+  #get any deaths too
+  df_deaths_any <- eave.data$deaths %>% select(EAVE_LINKNO,NRS.Date.Death)
+
+  #
+  df_severe_1 <- df_smr01_covid %>% rbind(df_deaths_covid %>% select(EAVE_LINKNO,ADMISSION_DATE)) %>% 
+    arrange(EAVE_LINKNO,ADMISSION_DATE) 
+  
+  
+  df <- cohort %>% left_join(df_severe_1) %>% left_join(df_deaths_any)# %>%  
+                   #left_join(eave.data$demographics %>% #join with eave demographics data to get urban class, as original cohorts may not have this data
+                  #           as_tibble %>% 
+                  #           select(EAVE_LINKNO,ur6_2016_name) %>% 
+                  #           filter(!is.na(ur6_2016_name)) %>%
+                  #           mutate(ur6_2016_name=as.factor(ur6_2016_name)) 
+                  #           %>% droplevels)
+  
+  df <- serology_outcome_analysis.prepare_dataframe(df) %>%
+        rename(outcome_hosp=outcome)
+  
+  return (df)
+}
+
+
+#' Function to help create the dataframe needed for the infection analysis
+#' - given an already built cohort dataframe, we build a new dataframe to link with infection outcomes
+#'
+#' @param cohort initial dataframe built for a cohort containing the serology data
+#' @param eave.data all EAVE-II recommended datasets
+#' @return analysis data frame
+#' @export
+serology_outcome_analysis.create_infect_dataframe <- function(cohort,eave.data){
+  
+  #find the minimum serology date that was used in the cohort 
+  min_date <- min(cohort$Sampledate_iso)
+  
+  #get infections
+  #call it 'ADMISSION_DATE' just so we can use the same code as for hosp/death
+  df_infect <- eave.data$pcr_ve %>% rename(ADMISSION_DATE=CdwDate) %>% select(-death28) %>% 
+               filter(ADMISSION_DATE > min_date)
+  
+  
+  #get any deaths too
+  df_deaths_any <- eave.data$deaths %>% select(EAVE_LINKNO,NRS.Date.Death)
+  
+  df <- cohort %>% left_join(df_infect) %>% left_join(df_deaths_any) %>%  
+        left_join(eave.data$demographics %>% #join with eave demographics data to get urban class, as original cohorts may not have this data
+                  as_tibble %>% 
+                  select(EAVE_LINKNO,ur6_2016_name) %>% 
+                  filter(!is.na(ur6_2016_name)) %>%
+                  mutate(ur6_2016_name=as.factor(ur6_2016_name)) 
+                  %>% droplevels)
+  
+  df <- serology_outcome_analysis.prepare_dataframe(df) %>%
+        rename(outcome_infect=outcome)
+  
+  
+  return (df)
+}
+
+ 
+
+
