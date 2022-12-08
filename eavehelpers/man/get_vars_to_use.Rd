@@ -7,6 +7,16 @@ based upon how good the p-value is for them when used in a univariate GLM fit wi
 \usage{
 get_vars_to_use(model, outcome_var, thres = 0.1)
 }
+\arguments{
+\item{model}{the input dataframe model}
+
+\item{outcome_var}{the name of the outcome variable (where outcome_var ~ x + y + z)}
+
+\item{thres}{the threshold value for the p-value (default 0.1)}
+}
+\value{
+a list of variable names
+}
 \description{
 Work out which variables are good enough to be used for analysis
 based upon how good the p-value is for them when used in a univariate GLM fit with the outcome

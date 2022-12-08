@@ -11,6 +11,9 @@ This function is for use with factor levels in GAM Fits
 \usage{
 get_coeff_name_map(gamFit)
 }
+\arguments{
+\item{gamFit}{GAM fit object from mgcv}
+}
 \description{
 Get a map between the coefficient name and
 \itemize{

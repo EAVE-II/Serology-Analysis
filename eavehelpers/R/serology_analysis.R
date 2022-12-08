@@ -539,12 +539,18 @@ plot_ratios <- function(tab,fill=NULL,facet=NULL,
 }
 
 #' @export
+get_ratios_table <- function (tab){
+  tab %>% 
+    mutate(uORs=ifelse(pos==1,"-",paste0(round(uOR,2)," (",round(uLCL,2)," - ", round(uUCL,2), ")"))) %>% 
+    mutate(ORs=ifelse(pos==1,"-",paste0(round(Nominal,2)," (",round(LCL,2)," - ", round(UCL,2), ")"))) %>% 
+    mutate(label = replace(label, duplicated(label), '')) %>% 
+    select(label,level,uORs,ORs) %>% return
+}
+
+#' @export
 display_ratios_table <- function (tab){
   require(knitr)
-  tab %>% 
-    mutate(Ratio=ifelse(pos==1,"-",paste0(round(Nominal,2)," (",round(LCL,2)," - ", round(UCL,2), " )"))) %>% 
-    mutate(label = replace(label, duplicated(label), '')) %>% 
-    select(label,level,Ratio) %>% 
+  get_ratios_table(tab) %>% 
     kable() %>%
     kable_classic(full_width = F, html_font = "Cambria")
 }
