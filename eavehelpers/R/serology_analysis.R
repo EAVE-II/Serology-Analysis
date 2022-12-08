@@ -9,6 +9,16 @@ library(markdown)
 library(ggtext)
 library(knitr)
 library(kableExtra)
+library(data.table)
+library(forcats)
+library(broom)
+library(survival)
+library("survminer")
+library(forestplot)
+library(ggtext)
+library(kableExtra)
+library(rlang)
+library(visreg)
 
 #' Helper function that will extract the QCOVID names from a dataframe  
 #' after applying filtering on a condition, 
@@ -168,7 +178,9 @@ code_vars <- function(model){
           mutate_at(c("insufficient_response","prior_infection","ch_resident","shielding"),
                     ~as.factor(ifelse(.==1,'Yes','No'))) %>% 
           mutate_at(vars(contains('Q_DIAG')),
-                    ~as.factor(ifelse(.==1,'Yes','No')))
+                    ~as.factor(ifelse(.==1,'Yes','No'))) %>%
+          mutate_at(vars(contains('additional')),
+                    ~as.factor(.))
           
   return (model)
 }
@@ -190,6 +202,8 @@ get_modelB_df <- function(df){
   require(tidyr)
   return (df %>% filter(n_risk_gps>0) %>% code_vars())
 }
+
+
 
 
 #' Perform an unadjusted gam fit for each variable in a formula given a dataframe
@@ -553,6 +567,61 @@ display_ratios_table <- function (tab){
   get_ratios_table(tab) %>% 
     kable() %>%
     kable_classic(full_width = F, html_font = "Cambria")
+}
+
+
+#' @export
+get_forest_df <- function(model,data){
+  main <- "Hazard ratio"
+  cpositions <- c(0.02, 0.22, 0.4)
+  fontsize <- 0.7
+  refLabel <- "reference"
+  noDigits <- 2
+  conf.high <- conf.low <- estimate <- NULL
+  
+  terms <- attr(model$terms, "dataClasses")[-1]
+  coef <- as.data.frame(tidy(model, conf.int = TRUE))
+  gmodel <- glance(model)
+  
+  
+  
+  allTerms <- lapply(seq_along(terms), function(i){
+    var <- base::names(terms)[i]
+    if (terms[i] %in% c("factor", "character")) {
+      adf <- as.data.frame(table(data[, var]))
+      cbind(var = var, adf, pos = 1:nrow(adf))
+    }
+    else if (terms[i] == "numeric") {
+      data.frame(var = var, Var1 = "", Freq = nrow(data),
+                 pos = 1)
+    }
+    else {
+      vars = grep(paste0("^", var, "*."), coef$term, value=TRUE)
+      data.frame(var = vars, Var1 = "", Freq = nrow(data),
+                 pos = seq_along(vars))
+    }
+  })
+  
+  
+  allTermsDF <- do.call(rbind, allTerms)
+  colnames(allTermsDF) <- c("var", "level", "N", "pos")
+  inds <- apply(allTermsDF[,1:2], 1, paste0, collapse="")
+  
+  
+  rownames(coef) <- gsub(coef$term, pattern = "`", replacement = "")
+  toShow <- cbind(allTermsDF, coef[inds,])[,c("var", "level","estimate", "conf.low", "conf.high", "pos")]
+  toShow[is.na(toShow)] <- 0
+  toShow <- toShow %>% as_tibble() %>% 
+    mutate_at(c('estimate','conf.low','conf.high'),exp) %>%
+    mutate(name=as.character(var)) %>%
+    mutate(name=eavehelpers::get_label(name)) %>%
+    mutate(name=ifelse(is.na(name),as.character(var),name))
+  
+  levels <- unique(toShow$name)
+  #toShow <- toShow %>% mutate(name=factor(name,levels=levels))
+  
+  toShow <- toShow %>% mutate(level = ifelse(pos==1,paste0('<b>',as.character(level),' (ref) </b>'),as.character(level)))
+  return (toShow);
 }
 
 

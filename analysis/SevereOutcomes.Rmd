@@ -1,0 +1,202 @@
+---
+title: "Severe Outcomes Analysis"
+output: html_notebook
+---
+
+
+
+## Initial setup
+
+```{r}
+library(eavehelpers)
+library(ggplot2)
+library(phsstyles)
+library(survival)
+
+data.pc <- readRDS("/conf/EAVE/GPanalysis/data/temp/fail_to_mount_pc_3.rds")
+data.bd <- readRDS("/conf/EAVE/GPanalysis/data/temp/fail_to_mount_bd_3.rds")
+print (nrow(data.pc))
+print (nrow(data.bd))
+```
+
+Create an output folder for the date we are running the analysis.
+
+```{r}
+output_folder <- file.path("results", Sys.Date())
+dir.create(output_folder, showWarnings = TRUE)
+```
+
+
+
+```{r}
+#eave.data <- eavehelpers::load_recommended_datasets() 
+labels(eave.data)
+```
+
+
+```{r}
+pc.modelC.df <- eavehelpers::serology_outcome_analysis.create_infect_dataframe(data.pc,eave.data) %>% code_vars()
+bd.modelC.df <- eavehelpers::serology_outcome_analysis.create_infect_dataframe(data.bd,eave.data) %>% code_vars()
+```
+
+
+```{r}
+pc.modelC.cox <- with(pc.modelC.df,
+                 coxph(Surv(t1,t2, outcome_infect) ~  insufficient_response + n_risk_gps + ageYear + Sex + shielding + ch_resident + Q_BMI + simd2020v2_sc_quintile + ur6_2016_name + additional ))
+
+pc.modelC.cox.HRs <- eavehelpers::get_forest_df(pc.modelC.cox,pc.modelC.df)
+
+eavehelpers::display_ratios_table(pc.modelC.cox.HRs %>% mutate(Nominal=estimate,LCL=conf.low,UCL=conf.high,label=name))
+```
+
+
+```{r}
+pc.modelC.cox.unadjusted <- with(pc.modelC.df,
+                 coxph(Surv(t1,t2, outcome_infect) ~  insufficient_response ))
+
+pc.modelC.cox.uHRs <- eavehelpers::get_forest_df(pc.modelC.cox.unadjusted,pc.modelC.df)
+
+attr(pc.modelC.cox.HRs,'unadjusted') <- pc.modelC.cox.uHRs
+
+eavehelpers::display_ratios_table( pc.modelC.cox.uHRs %>% mutate(Nominal=estimate,LCL=conf.low,UCL=conf.high,label=name))
+```
+
+
+
+```{r}
+bd.modelC.cox <- with(bd.modelC.df,
+                 coxph(Surv(t1,t2, outcome_infect) ~  insufficient_response + n_risk_gps + ageYear + Sex + shielding  + Q_BMI + simd2020v2_sc_quintile + ur6_2016_name + additional ))
+summary(bd.modelC.cox)
+```
+
+
+```{r}
+bd.modelC.cox.HRs <- eavehelpers::get_forest_df(bd.modelC.cox,bd.modelC.df)
+eavehelpers::display_ratios_table(bd.modelC.cox.HRs %>% mutate(Nominal=estimate,LCL=conf.low,UCL=conf.high,label=name))
+```
+
+
+```{r}
+bd.modelC.cox.unadjusted <- with(bd.modelC.df,
+                 coxph(Surv(t1,t2, outcome_infect) ~  insufficient_response ))
+
+bd.modelC.cox.uHRs <- eavehelpers::get_forest_df(bd.modelC.cox.unadjusted,bd.modelC.df)
+
+attr(bd.modelC.cox.HRs,'unadjusted') <- bd.modelC.cox.uHRs
+
+eavehelpers::display_ratios_table( bd.modelC.cox.uHRs %>% mutate(Nominal=estimate,LCL=conf.low,UCL=conf.high,label=name))
+```
+
+
+
+```{r,fig.height = 9, fig.width = 9}
+
+modelC.cox.HRs <- pc.modelC.cox.HRs %>% mutate(dataset='Primary Care') %>% 
+                           rbind(bd.modelC.cox.HRs %>% mutate(dataset='Blood Donors')) %>%
+                 mutate(dataset=as.factor(dataset)) %>%
+                 mutate(Nominal=estimate,UCL=conf.high,LCL=conf.low)
+
+eavehelpers::plot_ratios(modelC.cox.HRs,
+                         xmin=0.25,xmax=5,
+                         xtitle='HR (95% CI)',
+                         fill=dataset,
+                         facet=as.factor(name) ~ fct_rev(as.factor(dataset))
+) 
+```
+
+
+## Model D
+
+
+Create the analysis ready dataframe that can be used for both model D and model E.
+* The filter of `ageYear!='0-19'` is because there is one event in this category, which messes up the fit. We require >5 events in all categories. This is just a simple  ad-hoc way around this, instead of regrouping and/or redefining categories.
+
+```{r}
+pc.modelDE.df <- eavehelpers::serology_outcome_analysis.create_hosp_death_dataframe(data.pc,eave.data) %>% code_vars() %>% filter(ageYear!='0-19')
+bd.modelDE.df <- eavehelpers::serology_outcome_analysis.create_hosp_death_dataframe(data.bd,eave.data) %>% code_vars() %>% filter(ageYear!='0-19')
+```
+
+
+```{r}
+pc.modelD.cox <- with(pc.modelDE.df,
+                          coxph(Surv(t1,t2, outcome_hosp) ~ insufficient_response + additional + n_risk_gps + ageYear + Sex + Q_BMI  ))
+summary(pc.modelD.cox)
+```
+
+
+
+```{r}
+pc.modelD.cox.HRs <- eavehelpers::get_forest_df(pc.modelD.cox,pc.modelDE.df)
+eavehelpers::display_ratios_table( pc.modelD.cox.HRs %>% mutate(Nominal=estimate,LCL=conf.low,UCL=conf.high,label=name))
+```
+
+```{r}
+eavehelpers::plot_ratios(pc.modelD.cox.HRs %>% mutate(Nominal=estimate,LCL=conf.low,UCL=conf.high,label=name),
+                         xtitle='HR (95% CI)')
+```
+
+
+```{r}
+f.pc <- base::c('Undetectable'=0.,'Insufficient'=4.82,'Below Average'=33.3,'Average'=230.,'Above Average'=2000)
+f.bd <- base::c('Undetectable'=-1.,'Insufficient'=0.11,'Below Average'=0.7,'Average'=5,'Above Average'=8.5)
+
+pc.modelE.df <- pc.modelDE.df 
+
+f <- f.pc
+labels <- labels(f)
+calculate_igg_quartiles <- function(x){
+  return (labels(f[sum(f<=x)])[1])
+}
+
+pc.modelE.df$igg <- mapply(calculate_igg_quartiles, pc.modelE.df$IgG)
+pc.modelE.df <- pc.modelE.df %>% mutate(igg = factor(igg,levels=labels)) %>% mutate(igg=fct_relevel(igg,'Average'))
+pc.modelE.df %>% group_by(igg,outcome_hosp) %>% summarise(n=n())
+
+```
+
+Calculate a formular that will calculate the number of risks groups expect for four specific risk groups
+```{r}
+qnames <- pc.modelE.df %>% eavehelpers::get_qcovid_names(var='outcome_hosp',condition=1,n=1)
+qnames2 <- c("Q_DIAG_BLOOD_CANCER","Q_DIAG_CHD","Q_DIAG_PULM_HYPER","Q_DIAG_COPD")
+
+formula_other <- paste0(paste0(qnames,collapse = ' + ')," - ",paste0(qnames2,collapse = ' - '))
+formula_other
+```
+
+
+```{r}
+pc.modelE.df <- pc.modelE.df %>%
+  mutate_at(vars(contains("Q_DIAG")),~as.numeric(ifelse(.=='Yes',1,0))) %>%
+  mutate(n_risk_gpsOther = !!parse_quo(formula_other, env = caller_env())) %>%
+  mutate(n_risk_gpsOther = as.factor(ifelse(n_risk_gpsOther>2,'3+',n_risk_gpsOther))) %>% 
+  mutate_at(vars(contains("Q_DIAG")),~as.factor(ifelse(.==1,'Yes','No'))) 
+
+
+formula <- paste0("Surv(t1,t2, outcome_hosp) ~ igg + additional  + ",
+                              paste0(qnames2,collapse=" + "),
+                              "+ n_risk_gpsOther + ageYear + Sex + Q_BMI " )
+
+pc.modelE.cox <- with(pc.modelE.df,coxph(as.formula(formula)))
+summary(pc.modelE.cox)
+```
+
+```{r}
+pc.modelE.cox.HRs <- eavehelpers::get_forest_df(pc.modelE.cox,pc.modelE.df)
+eavehelpers::display_ratios_table( pc.modelE.cox.HRs %>% mutate(Nominal=estimate,LCL=conf.low,UCL=conf.high,label=name))
+```
+
+```{r,fig.height = 8, fig.width = 7}
+eavehelpers::plot_ratios(pc.modelE.cox.HRs %>% mutate(label=name,Nominal=estimate,LCL=conf.low,UCL=conf.high),
+                         xmin=0.1,xmax=10,
+                         xtitle='HR (95% CI)'
+)
+```
+
+```{r}
+saveRDS(pc.modelC.cox.HRs,paste0(output_folder,'/modelC_pc_cox_HR.rds'))
+saveRDS(bd.modelC.cox.HRs,paste0(output_folder,'/modelC_bd_cox_HR.rds'))
+saveRDS(pc.modelD.cox.HRs,paste0(output_folder,'/modelD_cox_HR.rds'))
+saveRDS(pc.modelE.cox.HRs,paste0(output_folder,'/modelE_cox_HR.rds'))
+```
+
+
