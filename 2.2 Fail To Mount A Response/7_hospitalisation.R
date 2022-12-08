@@ -50,8 +50,9 @@ get_forest_df <- function(model,data){
   toShow <- cbind(allTermsDF, coef[inds,])[,c("var", "level","estimate", "conf.low", "conf.high", "pos")]
   toShow[is.na(toShow)] <- 0
   toShow <- toShow %>% as_tibble() %>% mutate_at(c('estimate','conf.low','conf.high'),exp) %>%
-    mutate(name=lookup[as.character(var)]) %>%
-    mutate(name=ifelse(is.na(name),as.character(var),name))
+    mutate(name=var)
+  #lookup[as.character(var)]) %>%
+  #  mutate(name=ifelse(is.na(name),as.character(var),name))
   
   levels <- unique(toShow$name)
   toShow <- toShow %>% mutate(name=factor(name,levels=levels))

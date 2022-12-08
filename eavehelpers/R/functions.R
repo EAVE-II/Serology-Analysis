@@ -2,6 +2,7 @@ pkg.env <- new.env(parent = emptyenv())
 pkg.env$dd <- do.call(rbind,jsonlite::fromJSON(system.file("extdata", "data_dictionary.json", package = "eavehelpers"),flatten=T)$columns)
 
 var.names = c(
+  "insufficient_response"="Insufficient Antibodies",
   "ch_resident"="Care Home Resident",
   "immuno"="Immunosuppressed",
   "shielding"="Shielding",
