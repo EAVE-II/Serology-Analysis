@@ -231,13 +231,37 @@ summary {
 <p>Import some libraries we need.</p>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeShkcGx5cilcbmxpYnJhcnkodGlkeXIpXG5saWJyYXJ5KGdncGxvdDIpXG5saWJyYXJ5KHBoc3N0eWxlcylcbmxpYnJhcnkobGVtb24pXG5saWJyYXJ5KGVhdmVoZWxwZXJzKVxuYGBgIn0= -->
-<pre class="r"><code>library(dplyr)
-library(tidyr)
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeShkcGx5cilcbmBgYCJ9 -->
+<pre class="r"><code>library(dplyr)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiXG5BdHRhY2hpbmcgcGFja2FnZTog4oCYZHBseXLigJlcblxuVGhlIGZvbGxvd2luZyBvYmplY3RzIGFyZSBtYXNrZWQgZnJvbSDigJhwYWNrYWdlOnN0YXRz4oCZOlxuXG4gICAgZmlsdGVyLCBsYWdcblxuVGhlIGZvbGxvd2luZyBvYmplY3RzIGFyZSBtYXNrZWQgZnJvbSDigJhwYWNrYWdlOmJhc2XigJk6XG5cbiAgICBpbnRlcnNlY3QsIHNldGRpZmYsIHNldGVxdWFsLCB1bmlvblxuIn0= -->
+<pre><code>
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union</code></pre>
+<!-- rnb-output-end -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeSh0aWR5cilcbmxpYnJhcnkoZ2dwbG90MilcbmxpYnJhcnkocGhzc3R5bGVzKVxubGlicmFyeShsZW1vbilcbmBgYCJ9 -->
+<pre class="r"><code>library(tidyr)
 library(ggplot2)
 library(phsstyles)
-library(lemon)
-library(eavehelpers)</code></pre>
+library(lemon)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiXG5BdHRhY2hpbmcgcGFja2FnZTog4oCYbGVtb27igJlcblxuVGhlIGZvbGxvd2luZyBvYmplY3RzIGFyZSBtYXNrZWQgZnJvbSDigJhwYWNrYWdlOmdncGxvdDLigJk6XG5cbiAgICBDb29yZENhcnRlc2lhbiwgZWxlbWVudF9yZW5kZXJcbiJ9 -->
+<pre><code>
+Attaching package: ‘lemon’
+
+The following objects are masked from ‘package:ggplot2’:
+
+    CoordCartesian, element_render</code></pre>
+<!-- rnb-output-end -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeShlYXZlaGVscGVycylcbmBgYCJ9 -->
+<pre class="r"><code>library(eavehelpers)</code></pre>
 <!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
@@ -250,23 +274,10 @@ library(eavehelpers)</code></pre>
 <!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZWF2ZS5kYXRhIDwtIGVhdmVoZWxwZXJzOjpsb2FkX3JlY29tbWVuZGVkX2RhdGFzZXRzKCkgXG5gYGAifQ== -->
 <pre class="r"><code>eave.data &lt;- eavehelpers::load_recommended_datasets() </code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoibG9hZGVkIDE4MzA2NyBkZWF0aHNcbmxvYWRlZCA2MzY4NTA3IGNvdmlkLTE5IGhvc3BpdGFsaXNhdGlvbnNcbmxvYWRlZCA0MjgwMDAwIHJlY29yZHMgb2Ygcmlza3MgZnJvbSBRQ09WSUQtMi8zXG50aGUgY29uZGl0aW9uIGhhcyBsZW5ndGggPiAxIGFuZCBvbmx5IHRoZSBmaXJzdCBlbGVtZW50IHdpbGwgYmUgdXNlZGxvYWRlZCA0MjYzNDEzIHZhY2NpbmF0aW9uIHJlY29yZHNcbmxvYWRlZCAxNDY2MzcxIHBvc2l0aXZlIHBjciB0ZXN0IHJlY29yZHNcbmxvYWRlZCA1ODA5ODgyIGluZGl2aWR1YWwgZGVtb2dyYXBoaWNzXG4xIHBhcnNpbmcgZmFpbHVyZS5cbiAgcm93IGNvbCBleHBlY3RlZCBhY3R1YWxcbjI0NzU5ICAtLSBhIG51bWJlciAgIFNLSVBcbiJ9 -->
-<pre><code>loaded 183067 deaths
+<!-- rnb-output-begin eyJkYXRhIjoibG9hZGVkIDE4NDM1MCBkZWF0aHNcbmxvYWRlZCA2MzY4NTA3IGNvdmlkLTE5IGhvc3BpdGFsaXNhdGlvbnNcbmxvYWRlZCA0MjgwMDAwIHJlY29yZHMgb2Ygcmlza3MgZnJvbSBRQ09WSUQtMi8zXG4ifQ== -->
+<pre><code>loaded 184350 deaths
 loaded 6368507 covid-19 hospitalisations
-loaded 4280000 records of risks from QCOVID-2/3
-the condition has length &gt; 1 and only the first element will be usedloaded 4263413 vaccination records
-loaded 1466371 positive pcr test records
-loaded 5809882 individual demographics
-1 parsing failure.
-  row col expected actual
-24759  -- a number   SKIP</code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGFiZWxzKGVhdmUuZGF0YSlcbmBgYCJ9 -->
-<pre class="r"><code>labels(eave.data)</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiWzFdIFwiZGVtb2dyYXBoaWNzXCIgICAgICAgICAgXCJzZXJvbG9neV9wcmltYXJ5X2NhcmVcIiBcInNlcm9sb2d5X2Jsb29kX2Rvbm9yc1wiIFwiZGVhdGhzXCIgICAgICAgICAgICAgICAgXCJzbXIwMV9jb3ZpZFwiICAgICAgICAgIFxuWzZdIFwicWNvdmlkXCIgICAgICAgICAgICAgICAgXCJjMTl2YWNjaW5lXCIgICAgICAgICAgICBcInBjcl92ZVwiICAgICAgICAgICAgICAgXG4ifQ== -->
-<pre><code>[1] &quot;demographics&quot;          &quot;serology_primary_care&quot; &quot;serology_blood_donors&quot; &quot;deaths&quot;                &quot;smr01_covid&quot;          
-[6] &quot;qcovid&quot;                &quot;c19vaccine&quot;            &quot;pcr_ve&quot;               </code></pre>
+loaded 4280000 records of risks from QCOVID-2/3</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
