@@ -16,12 +16,12 @@ install.packages("<path to code>/eavehelpers", repos = NULL, type="source")
 
 ## 2. Loading Data
 
-[analysis/LoadData](LoadData.Rmd)
+[analysis/LoadData](analysis/LoadData.Rmd)
 
 ## 3. Insufficient Response Analysis
 
-[analysis/InsufficientResponse](InsufficientResponse.Rmd)
+[analysis/InsufficientResponse](analysis/InsufficientResponse.Rmd)
 
 ## 4. Severe Outcomes Analysis
 
-[analysis/SevereOutcomes](SevereOutcomes.Rmd)
+[analysis/SevereOutcomes](analysis/SevereOutcomes.Rmd)
