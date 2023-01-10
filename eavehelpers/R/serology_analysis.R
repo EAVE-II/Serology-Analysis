@@ -155,9 +155,9 @@ code_vars <- function(model){
                                                        labels = c("0-19","20-39","40-59","60+")),
                                                        levels=c("40-59","0-19","20-39","60+"))) %>%
             mutate_at(vars(one_of('Q_BMI')), ~relevel(cut(ifelse((is.na(.x) | .x<5 | .x>80 ),-1,.x), 
-                                                      breaks = c(-2,0,20,25,30,80), right = T, 
-                                                      labels = c("Unknown","0-20","20-25","25-30","30+")),
-                                                      ref='20-25')
+                                                      breaks = c(-2,5,18.5,25,30,80), right = F, 
+                                                      labels = c("Unknown","<18.5","18.5-25","25-30","30+")),
+                                                      ref='18.5-25')
             )
   
   #create a better variable for the definition of immuno suppressed 
@@ -237,6 +237,7 @@ calculate_unadjusted_gam <- function(model,formula){
 #' @param formula formula string (e.g. y ~ x + z)
 #' @export
 perform_gam <- function(model,formula){
+  require(mgcv)
   fit <- gam(formula,family=binomial,data=model)
   return(fit)
 }

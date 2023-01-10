@@ -88,8 +88,8 @@ load_recommended_datasets <- function() {
   #if there's been 2 doses, make sure the record is good by requiring the products to have been the same
   #if there products are different, something is not right, so throw away the record
   #if d2_product is not NA, require d1_product == d2_product
-  df_vac <- df_vac %>%  filter(if(!is.na(d2_product)) d1_product==d2_product else TRUE )
-  
+  #df_vac <- df_vac %>%  filter(if(!is.na(d2_product)) d1_product==d2_product else TRUE )
+  df_vac <- df_vac %>% filter(!is.na(d1_product) & (is.na(d2_product) | d1_product==d2_product))
   
   message(paste0('loaded ',nrow(df_vac),' vaccination records'))
   
@@ -155,6 +155,10 @@ serology_vaccine_analysis.create_dataframe <- function(eave.data,serology_datase
   meta[['Valid Demographics']] <- nrow(df)#length(unique(df$EAVE_LINKNO))
 
   df <- df %>% left_join(eave.data$qcovid) %>% filter(!is.na(n_risk_gps))
+  
+  #df <- df %>% left_join(eave.data$qcovid) %>% 
+  #             mutate_at(vars(starts_with('Q_')), ~ ifelse(is.na(.),0,.)) %>%
+  #             mutate_at(vars('n_risk_gps'),~ replace(.,is.na(.),0))
   
   meta[['Valid QCOVID']] <-  nrow(df)
    
