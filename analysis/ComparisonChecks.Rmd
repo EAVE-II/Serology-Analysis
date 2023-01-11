@@ -9,24 +9,34 @@ output: html_notebook
 pc.modelA.v1 <- readRDS('/home/calumm09/SerologyAnalysis/analysis/results/Nominal/modelA_pc_gamFit.rds')
 pc.modelA.v2 <- readRDS('/home/calumm09/SerologyAnalysis/analysis/results/BMI_FIX/modelA_pc_gamFit.rds')
 pc.modelA.v3 <- readRDS('/home/calumm09/SerologyAnalysis/analysis/results/QCOVID_FIX/modelA_pc_gamFit.rds')
-pc.modelA.v4 <- readRDS('/home/calumm09/SerologyAnalysis/analysis/results/VACCINE_FIX/modelA_pc_gamFit.rds')
+#pc.modelA.v4 <- readRDS('/home/calumm09/SerologyAnalysis/analysis/results/VACCINE_FIX/modelA_pc_gamFit.rds')
+pc.modelA.v4 <- readRDS('/home/calumm09/SerologyAnalysis/analysis/results/QCOVID_FIX2/modelA_pc_gamFit.rds')
 
 bd.modelA.v1 <- readRDS('/home/calumm09/SerologyAnalysis/analysis/results/Nominal/modelA_bd_gamFit.rds')
 bd.modelA.v2 <- readRDS('/home/calumm09/SerologyAnalysis/analysis/results/BMI_FIX/modelA_bd_gamFit.rds')
 bd.modelA.v3 <- readRDS('/home/calumm09/SerologyAnalysis/analysis/results/QCOVID_FIX/modelA_bd_gamFit.rds')
-bd.modelA.v4 <- readRDS('/home/calumm09/SerologyAnalysis/analysis/results/VACCINE_FIX/modelA_bd_gamFit.rds')
+#bd.modelA.v4 <- readRDS('/home/calumm09/SerologyAnalysis/analysis/results/VACCINE_FIX/modelA_bd_gamFit.rds')
+bd.modelA.v4 <- readRDS('/home/calumm09/SerologyAnalysis/analysis/results/QCOVID_FIX2/modelA_bd_gamFit.rds')
 ```
 
 ```{r}
-pc.modelA.v1.or <- eavehelpers::get_or_from_gam(pc.modelA.v1) 
-pc.modelA.v2.or <- eavehelpers::get_or_from_gam(pc.modelA.v2) 
-pc.modelA.v3.or <- eavehelpers::get_or_from_gam(pc.modelA.v3) 
-pc.modelA.v4.or <- eavehelpers::get_or_from_gam(pc.modelA.v4) 
+map <- c('0'='0','1'='1','2'='2','3'='3-4','4'='5+','5'='Unknown')
+fix_risks <- function(df){
+  df <- df %>% mutate(level = ifelse(var=='n_risk_gps' & pos>1,map[as.character(level)],level))
+  return (df);
+}
 
-bd.modelA.v1.or <- eavehelpers::get_or_from_gam(bd.modelA.v1) 
-bd.modelA.v2.or <- eavehelpers::get_or_from_gam(bd.modelA.v2) 
-bd.modelA.v3.or <- eavehelpers::get_or_from_gam(bd.modelA.v3) 
-bd.modelA.v4.or <- eavehelpers::get_or_from_gam(bd.modelA.v4) 
+
+pc.modelA.v1.or <- eavehelpers::get_or_from_gam(pc.modelA.v1) %>% fix_risks
+pc.modelA.v2.or <- eavehelpers::get_or_from_gam(pc.modelA.v2) %>% fix_risks
+pc.modelA.v3.or <- eavehelpers::get_or_from_gam(pc.modelA.v3) %>% fix_risks
+pc.modelA.v4.or <- eavehelpers::get_or_from_gam(pc.modelA.v4) %>% fix_risks
+
+
+bd.modelA.v1.or <- eavehelpers::get_or_from_gam(bd.modelA.v1) %>% fix_risks
+bd.modelA.v2.or <- eavehelpers::get_or_from_gam(bd.modelA.v2) %>% fix_risks
+bd.modelA.v3.or <- eavehelpers::get_or_from_gam(bd.modelA.v3) %>% fix_risks
+bd.modelA.v4.or <- eavehelpers::get_or_from_gam(bd.modelA.v4) %>% fix_risks
 
 ```
 
@@ -41,6 +51,14 @@ eavehelpers::display_ratios_table(pc.modelA.v2.or %>% rename(Nominal=OR))
 
 ```{r}
 eavehelpers::display_ratios_table(pc.modelA.v3.or %>% rename(Nominal=OR))
+```
+
+```{r}
+eavehelpers::display_ratios_table(pc.modelA.v4.or %>% rename(Nominal=OR))
+```
+
+```{r}
+eavehelpers::display_ratios_table(bd.modelA.v4.or %>% rename(Nominal=OR))
 ```
 
 
@@ -77,6 +95,16 @@ eavehelpers::plot_ratios(temp,
                          fill=dataset,
                          facet=as.factor(name) ~ fct_rev(as.factor(dataset)))
 ```
+
+```{r}
+eavehelpers::display_ratios_table( pc.modelD.v1 %>% mutate(Nominal=estimate,LCL=conf.low,UCL=conf.high,label=name))
+```
+
+```{r}
+eavehelpers::display_ratios_table( pc.modelD.v2 %>% mutate(Nominal=estimate,LCL=conf.low,UCL=conf.high,label=name))
+```
+
+
 
 
 ```{r}

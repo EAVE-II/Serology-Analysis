@@ -154,11 +154,12 @@ serology_vaccine_analysis.create_dataframe <- function(eave.data,serology_datase
   
   meta[['Valid Demographics']] <- nrow(df)#length(unique(df$EAVE_LINKNO))
 
-  df <- df %>% left_join(eave.data$qcovid) %>% filter(!is.na(n_risk_gps))
+  #df <- df %>% left_join(eave.data$qcovid) %>% filter(!is.na(n_risk_gps))
   
-  #df <- df %>% left_join(eave.data$qcovid) %>% 
-  #             mutate_at(vars(starts_with('Q_')), ~ ifelse(is.na(.),0,.)) %>%
-  #             mutate_at(vars('n_risk_gps'),~ replace(.,is.na(.),0))
+  df <- df %>% left_join(eave.data$qcovid) %>% 
+               mutate_at(vars(starts_with('Q_')), ~ ifelse(is.na(.),0,.)) %>%
+               mutate_at(vars('n_risk_gps'),~fct_explicit_na(.,na_level='Unknown'))
+               #mutate_at(vars('n_risk_gps'),~ replace(.,is.na(.),0))
   
   meta[['Valid QCOVID']] <-  nrow(df)
    
