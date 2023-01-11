@@ -8,6 +8,26 @@ Description: Helper functions for the EAVE-II and future collaborations
 License: use_mit_license()
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.2.1
+RoxygenNote: 7.2.3
 Imports:
-	jsonlite
+	jsonlite,
+	dplyr,
+	ggplot2,
+	tibble,
+	broom,
+	gratia,
+	kableExtra,
+	purrr,
+	data.table,
+	forcats,
+	mgcv,
+	tidymv,
+	markdown,
+	ggtext,
+	knitr,
+	survial,
+	rlang,
+	visreg,
+	lubridate
+	
+	
