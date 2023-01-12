@@ -71,10 +71,24 @@ load_recommended_datasets <- function() {
   
   
   #load the QCOVID2-3 risk groups and BMI
-  df_qcovid <- readRDS("/conf/EAVE/GPanalysis/data/cleaned_data/QCOVID_feb22.rds") %>%
-    select(-Age,-Sex) 
+  #df_qcovid <- readRDS("/conf/EAVE/GPanalysis/data/cleaned_data/QCOVID_feb22.rds") %>%
+  #  select(-Age,-Sex) 
+  #message(paste0('loaded ',nrow(df_qcovid),' records of risks from QCOVID-2/3'))
   
-  message(paste0('loaded ',nrow(df_qcovid),' records of risks from QCOVID-2/3'))
+  
+  df_qcovid1 <- readRDS('/conf/EAVE/GPanalysis/data/cleaned_data/QCOVIDdeduped.rds') %>% as_tibble %>%
+    rename(Q_BMI=BMI) %>% select(EAVE_LINKNO,Q_BMI,starts_with('Q_DIAG')) %>% 
+    mutate(n_risk_gps =  rowSums((select(., starts_with('Q_DIAG')))>0)) %>%
+    select(EAVE_LINKNO,n_risk_gps,Q_BMI,starts_with('Q_DIAG')) %>%
+    mutate(n_risk_gps = case_when(
+      n_risk_gps==0 ~ '0',
+      n_risk_gps==1 ~ '1',
+      n_risk_gps==2 ~ '2',
+      n_risk_gps<5 ~ '3-4',
+      TRUE ~ '5+'
+    ))
+  
+  message(paste0('loaded ',nrow(df_qcovid1),' records of risks from QCOVID-1'))
   
   #get the vaccination records 
   #mutate the dataframe so that we have one row per person 
@@ -117,7 +131,8 @@ load_recommended_datasets <- function() {
     serology_blood_donors=df_serology$blood_donors,
     deaths=df_deaths,
     smr01_covid=df_smr01_covid,
-    qcovid=df_qcovid,
+    #qcovid=df_qcovid,
+    qcovid1=df_qcovid1,
     c19vaccine=df_vac,
     pcr_ve=df_pcr_ve))
 }
@@ -156,9 +171,12 @@ serology_vaccine_analysis.create_dataframe <- function(eave.data,serology_datase
 
   #df <- df %>% left_join(eave.data$qcovid) %>% filter(!is.na(n_risk_gps))
   
-  df <- df %>% left_join(eave.data$qcovid) %>% 
+  df <- df %>% #left_join(eave.data$qcovid) %>% 
+               left_join(eave.data$qcovid1) %>%
                mutate_at(vars(starts_with('Q_')), ~ ifelse(is.na(.),0,.)) %>%
-               mutate_at(vars('n_risk_gps'),~fct_explicit_na(.,na_level='Unknown'))
+               mutate(Q_DIAG_CKD = Q_DIAG_CKD3 + Q_DIAG_CKD4 + Q_DIAG_CKD5) %>% 
+               select(-Q_DIAG_CKD3,-Q_DIAG_CKD4,-Q_DIAG_CKD5) %>% 
+               mutate_at(vars('n_risk_gps'),~fct_explicit_na(.,na_level='0'))
                #mutate_at(vars('n_risk_gps'),~ replace(.,is.na(.),0))
   
   meta[['Valid QCOVID']] <-  nrow(df)
@@ -243,7 +261,7 @@ serology_vaccine_analysis.create_dataframe <- function(eave.data,serology_datase
                         prior_infection = ifelse(is.na(days_since_infection),0,1)
                         ) %>% 
                 mutate(across(starts_with("Q_"),.fns=as.numeric)) %>%
-                mutate(Q_DIAG_CKD_LEVEL=ifelse(Q_DIAG_CKD_LEVEL==0,0,1)) #convert CKD level 3-5 to a binary of having CKD
+                mutate_at(vars(one_of('Q_DIAG_CKD_LEVEL')),~ifelse(.==0,0,1)) #convert CKD level 3-5 to a binary of having CKD
     
     
   #this shouldnt be needed, but make sure the demographics are valid
@@ -286,7 +304,7 @@ serology_outcome_analysis.prepare_dataframe <- function(df){
     #mutate(days_since_measurement = as.numeric(as.Date(ADMISSION_DATE) - as.Date(Sampledate_iso),units='days' )) %>%
     mutate_at(c("ADMISSION_DATE","Sampledate_iso"),as.Date) %>% #make sure these are dates
     #mutate_at(c("insufficient_response","ch_resident","shielding"),~as.factor(ifelse(.==1,'Yes','No'))) %>%
-    mutate( #hacky.... calculate some start and end times for the experiment, per serology measurement
+    mutate( #calculate some start and end times for the experiment, per serology measurement
       t1=as.numeric(Sampledate_iso - as.Date(min_date),units='days'), #start date relative to the start of the experiment
       t2=ifelse(outcome==1, #if the outcome occurs...
                 t1 + days_since_sample, #t2 is defined as the sample date relative to the start of the experiment

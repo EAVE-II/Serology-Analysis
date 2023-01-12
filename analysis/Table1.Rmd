@@ -1,0 +1,107 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+df.pc <- data.pc %>% code_vars() %>% group_by(EAVE_LINKNO) %>% filter(row_number()==1) %>% ungroup %>% 
+          select(-age) %>% 
+          rename(age=ageYear)
+
+df.bd <- data.bd %>% code_vars() %>% group_by(EAVE_LINKNO) %>% filter(row_number()==1) %>% ungroup %>% 
+          select(-age) %>% 
+          rename(age=ageYear)
+```
+
+
+```{r}
+
+df.pc <- df.pc %>% mutate(
+  days_since_first_measurement = as.factor( cut(days_since_first_measurement,breaks = c(-1,90,180,270,360,450,10000))),
+  days_since_last_vac = as.factor( cut(days_since_last_vac,breaks =c(-1,50,100,150,200,300,10000)))
+  ) %>% droplevels()
+
+df.bd <- df.bd %>% mutate(
+  days_since_first_measurement = as.factor( cut(days_since_first_measurement,breaks = c(-1,90,180,270,360,450,10000))),
+  days_since_last_vac = as.factor( cut(days_since_last_vac,breaks =c(-1,50,100,150,200,300,10000)))
+  ) %>% droplevels()
+
+
+
+vars <- all.vars(as.formula(pc.modelB.gam.formula))[-1]
+
+tab <- NULL
+for (var in vars){
+  col1 <- df.pc %>%  group_by(!!sym(var)) %>% summarise(n=n()) %>% 
+            mutate(n=ifelse(n<5,5,n)) %>% 
+            mutate(p=sprintf("%.2f",round(100*n/sum(n),2))) %>%
+            mutate(col1 = case_when(
+              n>5 ~ paste0(n," (",p,")"),
+              TRUE ~ paste0("<",n," (<",p,")")
+            ))%>%
+            select(-n,-p)
+
+  col2 <- df.pc %>%  group_by(!!sym(var),insufficient_response) %>% summarise(n=n()) %>% 
+            mutate(n=ifelse(n<5,5,n)) %>% 
+            mutate(p=sprintf("%.2f",round(100*n/sum(n),2))) %>%
+            mutate(p=round(100*n/sum(n),2)) %>% filter(insufficient_response=='Yes') %>%
+            mutate(col2 = case_when(
+              n>5 ~ paste0(n," (",p,")"),
+              TRUE ~ paste0("<",n," (<",p,")")
+            ))%>%
+            select(-n,-p,-insufficient_response)
+  
+  col3 <- df.bd %>%  group_by(!!sym(var)) %>% summarise(n=n()) %>% 
+            mutate(n=ifelse(n<5,5,n)) %>% 
+            mutate(p=sprintf("%.2f",round(100*n/sum(n),2))) %>%
+            mutate(col3 = case_when(
+              n>5 ~ paste0(n," (",p,")"),
+              TRUE ~ paste0("<",n," (<",p,")")
+            ))%>%
+            select(-n,-p)
+
+  col4 <- df.bd %>%  group_by(!!sym(var),insufficient_response) %>% summarise(n=n()) %>% 
+            mutate(n=ifelse(n<5,5,n)) %>% 
+            mutate(p=sprintf("%.2f",round(100*n/sum(n),2))) %>%
+            mutate(p=round(100*n/sum(n),2)) %>% filter(insufficient_response=='Yes') %>%
+            mutate(col4 = case_when(
+              n>5 ~ paste0(n," (",p,")"),
+              TRUE ~ paste0("<",n," (<",p,")")
+            ))%>%
+            select(-n,-p,-insufficient_response)
+
+  rows <- col1 %>% left_join(col2) %>%  left_join(col3) %>%  left_join(col4) %>% 
+          #rename(label=!!sym(var)) %>% mutate(var=eavehelpers::get_label(as.character(var)),.before=label)
+          rename(label=!!sym(var)) %>% mutate(var2=eavehelpers::get_label(as.character(var)),.before=label) %>%
+          mutate(var = ifelse(is.na(var2),var,var2),.before=label) %>% select(-var2)
+  
+  tab <- tab %>% rbind(rows)
+  
+}
+```
+
+```{r}
+nrow(pc.modelC.df %>% filter(outcome_infect==1) %>% distinct(EAVE_LINKNO))
+nrow(pc.modelC.df %>% filter(outcome_infect==1 & insufficient_response=='Yes') %>% distinct(EAVE_LINKNO))
+```
+
+```{r}
+nrow(bd.modelC.df %>% filter(outcome_infect==1) %>% distinct(EAVE_LINKNO))
+nrow(bd.modelC.df %>% filter(outcome_infect==1 & insufficient_response=='Yes') %>% distinct(EAVE_LINKNO))
+```
+
+```{r}
+nrow(pc.modelDE.df %>% filter(outcome_hosp==1) %>% distinct(EAVE_LINKNO))
+nrow(pc.modelDE.df %>% filter(outcome_hosp==1 & insufficient_response=='Yes') %>% distinct(EAVE_LINKNO))
+```
+
+
+```{r}
+output_folder <- file.path("results", "FINAL")# Sys.Date())
+dir.create(output_folder, showWarnings = TRUE)
+
+tab %>% group_by(var) %>% filter(!(label=='No')) %>% ungroup %>% mutate_all(~replace_na(as.character(.),'-')) %>% 
+        write.csv(paste0(output_folder,"/table1.csv"))
+```
+
