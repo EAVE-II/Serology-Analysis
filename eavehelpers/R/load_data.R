@@ -304,7 +304,7 @@ serology_outcome_analysis.prepare_dataframe <- function(df){
     #mutate(days_since_measurement = as.numeric(as.Date(ADMISSION_DATE) - as.Date(Sampledate_iso),units='days' )) %>%
     mutate_at(c("ADMISSION_DATE","Sampledate_iso"),as.Date) %>% #make sure these are dates
     #mutate_at(c("insufficient_response","ch_resident","shielding"),~as.factor(ifelse(.==1,'Yes','No'))) %>%
-    mutate( #hacky.... calculate some start and end times for the experiment, per serology measurement
+    mutate( #calculate some start and end times for the experiment, per serology measurement
       t1=as.numeric(Sampledate_iso - as.Date(min_date),units='days'), #start date relative to the start of the experiment
       t2=ifelse(outcome==1, #if the outcome occurs...
                 t1 + days_since_sample, #t2 is defined as the sample date relative to the start of the experiment
