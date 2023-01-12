@@ -144,7 +144,7 @@ code_vars <- function(model){
   model <- model %>% 
             mutate(Sex = as.factor(Sex), #make into a factor
                    age=ageYear, #keep a record of the original age before categorisation
-                   n_risk_gps=as.factor(as.integer(n_risk_gps)-1), #coversion from <ord> to <factor>
+                   #n_risk_gps=as.factor(as.integer(n_risk_gps)-1), #coversion from <ord> to <factor>
                    cat = calculate_product_category(stage,d1_product,d2_product,d3_product,d4_product)#,
             )
   #setup SIMD, factor version of age and factor version of BMI
@@ -167,11 +167,11 @@ code_vars <- function(model){
   #      but is also very rare (so was never used in any analysis)
   model <- model %>%
           mutate(immuno = case_when(
-                                    (severely_immuno_supp==1) | (Q_DIAG_IMMU>0) ~ 'Severely',
+                                    (severely_immuno_supp==1)  ~ 'Severely', #| (Q_DIAG_IMMU>0)
                                     immuno_supp==1 ~ 'Yes',
                                     TRUE ~ 'No')) %>%
           mutate(immuno = factor(immuno,levels=c('No','Yes','Severely'))) %>% ##ifelse(immuno==1,0,immuno))) %>%
-          select(-immuno_supp,-severely_immuno_supp,-Q_DIAG_IMMU)
+          select(-immuno_supp,-severely_immuno_supp)#,-Q_DIAG_IMMU)
   
   #make these binary variables into a Yes/No
   model <- model %>%
@@ -200,7 +200,7 @@ get_modelA_df <- function(df){
 #' @export
 get_modelB_df <- function(df){
   require(tidyr)
-  return (df %>% filter(n_risk_gps>0) %>% code_vars())
+  return (df %>% filter(n_risk_gps!=0) %>% code_vars())
 }
 
 

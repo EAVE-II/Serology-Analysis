@@ -6,17 +6,23 @@ output: html_notebook
 
 ```{r}
 
-pc.modelA.v1 <- readRDS('/home/calumm09/SerologyAnalysis/analysis/results/Nominal/modelA_pc_gamFit.rds')
-pc.modelA.v2 <- readRDS('/home/calumm09/SerologyAnalysis/analysis/results/BMI_FIX/modelA_pc_gamFit.rds')
-pc.modelA.v3 <- readRDS('/home/calumm09/SerologyAnalysis/analysis/results/QCOVID_FIX/modelA_pc_gamFit.rds')
+#pc.modelA.v1 <- readRDS('/home/calumm09/SerologyAnalysis/analysis/results/Nominal/modelA_pc_gamFit.rds')
+#pc.modelA.v2 <- readRDS('/home/calumm09/SerologyAnalysis/analysis/results/BMI_FIX/modelA_pc_gamFit.rds')
+pc.modelA.v3 <- readRDS('/home/calumm09/SerologyAnalysis/analysis/results/QCOVID_FIX2/modelA_pc_gamFit.rds')
 #pc.modelA.v4 <- readRDS('/home/calumm09/SerologyAnalysis/analysis/results/VACCINE_FIX/modelA_pc_gamFit.rds')
-pc.modelA.v4 <- readRDS('/home/calumm09/SerologyAnalysis/analysis/results/QCOVID_FIX2/modelA_pc_gamFit.rds')
+#pc.modelA.v4 <- readRDS('/home/calumm09/SerologyAnalysis/analysis/results/QCOVID_FIX2/modelA_pc_gamFit.rds')
+pc.modelA.v5 <- readRDS('/home/calumm09/SerologyAnalysis/analysis/results/QCOVID_OLD/modelA_pc_gamFit.rds')
 
-bd.modelA.v1 <- readRDS('/home/calumm09/SerologyAnalysis/analysis/results/Nominal/modelA_bd_gamFit.rds')
-bd.modelA.v2 <- readRDS('/home/calumm09/SerologyAnalysis/analysis/results/BMI_FIX/modelA_bd_gamFit.rds')
-bd.modelA.v3 <- readRDS('/home/calumm09/SerologyAnalysis/analysis/results/QCOVID_FIX/modelA_bd_gamFit.rds')
+pc.modelB.v3 <- readRDS('/home/calumm09/SerologyAnalysis/analysis/results/QCOVID_FIX2/modelB_pc_gamFit.rds')
+pc.modelB.v5 <- readRDS('/home/calumm09/SerologyAnalysis/analysis/results/QCOVID_OLD/modelB_pc_gamFit.rds')
+
+
+
+#bd.modelA.v1 <- readRDS('/home/calumm09/SerologyAnalysis/analysis/results/Nominal/modelA_bd_gamFit.rds')
+#bd.modelA.v2 <- readRDS('/home/calumm09/SerologyAnalysis/analysis/results/BMI_FIX/modelA_bd_gamFit.rds')
+#bd.modelA.v3 <- readRDS('/home/calumm09/SerologyAnalysis/analysis/results/QCOVID_FIX/modelA_bd_gamFit.rds')
 #bd.modelA.v4 <- readRDS('/home/calumm09/SerologyAnalysis/analysis/results/VACCINE_FIX/modelA_bd_gamFit.rds')
-bd.modelA.v4 <- readRDS('/home/calumm09/SerologyAnalysis/analysis/results/QCOVID_FIX2/modelA_bd_gamFit.rds')
+#bd.modelA.v4 <- readRDS('/home/calumm09/SerologyAnalysis/analysis/results/QCOVID_OLD/modelA_bd_gamFit.rds')
 ```
 
 ```{r}
@@ -27,16 +33,20 @@ fix_risks <- function(df){
 }
 
 
-pc.modelA.v1.or <- eavehelpers::get_or_from_gam(pc.modelA.v1) %>% fix_risks
-pc.modelA.v2.or <- eavehelpers::get_or_from_gam(pc.modelA.v2) %>% fix_risks
+#pc.modelA.v1.or <- eavehelpers::get_or_from_gam(pc.modelA.v1) %>% fix_risks
+#pc.modelA.v2.or <- eavehelpers::get_or_from_gam(pc.modelA.v2) %>% fix_risks
 pc.modelA.v3.or <- eavehelpers::get_or_from_gam(pc.modelA.v3) %>% fix_risks
-pc.modelA.v4.or <- eavehelpers::get_or_from_gam(pc.modelA.v4) %>% fix_risks
+#pc.modelA.v4.or <- eavehelpers::get_or_from_gam(pc.modelA.v4) %>% fix_risks
+pc.modelA.v5.or <- eavehelpers::get_or_from_gam(pc.modelA.v5) %>% fix_risks
+
+pc.modelB.v3.or <- eavehelpers::get_or_from_gam(pc.modelB.v3) %>% fix_risks
+pc.modelB.v5.or <- eavehelpers::get_or_from_gam(pc.modelB.v5) %>% fix_risks
 
 
-bd.modelA.v1.or <- eavehelpers::get_or_from_gam(bd.modelA.v1) %>% fix_risks
-bd.modelA.v2.or <- eavehelpers::get_or_from_gam(bd.modelA.v2) %>% fix_risks
-bd.modelA.v3.or <- eavehelpers::get_or_from_gam(bd.modelA.v3) %>% fix_risks
-bd.modelA.v4.or <- eavehelpers::get_or_from_gam(bd.modelA.v4) %>% fix_risks
+#bd.modelA.v1.or <- eavehelpers::get_or_from_gam(bd.modelA.v1) %>% fix_risks
+#bd.modelA.v2.or <- eavehelpers::get_or_from_gam(bd.modelA.v2) %>% fix_risks
+#bd.modelA.v3.or <- eavehelpers::get_or_from_gam(bd.modelA.v3) %>% fix_risks
+#bd.modelA.v4.or <- eavehelpers::get_or_from_gam(bd.modelA.v4) %>% fix_risks
 
 ```
 
@@ -53,8 +63,18 @@ eavehelpers::display_ratios_table(pc.modelA.v2.or %>% rename(Nominal=OR))
 eavehelpers::display_ratios_table(pc.modelA.v3.or %>% rename(Nominal=OR))
 ```
 
+```{r,fig.height = 11, fig.width = 11}
+eavehelpers::display_ratios_table(pc.modelB.v3.or %>% rename(Nominal=OR)  %>% mutate(
+                           level=ifelse(grepl("Q_DIAG",names) & level=='Yes',label,level),
+                           label=ifelse(grepl("Q_DIAG",names),'QCOVID',label))
+                           %>% filter(label=='QCOVID' & pos>1))
+```
+
 ```{r}
-eavehelpers::display_ratios_table(pc.modelA.v4.or %>% rename(Nominal=OR))
+eavehelpers::display_ratios_table(pc.modelB.v5.or %>% rename(Nominal=OR)  %>% mutate(
+                           level=ifelse(grepl("Q_DIAG",names) & level=='Yes',label,level),
+                           label=ifelse(grepl("Q_DIAG",names),'QCOVID',label))
+                           %>% filter(label=='QCOVID' & pos>1))
 ```
 
 ```{r}
@@ -63,34 +83,55 @@ eavehelpers::display_ratios_table(bd.modelA.v4.or %>% rename(Nominal=OR))
 
 
 ```{r,fig.height = 9, fig.width = 11}
-temp <- pc.modelA.v1.or %>% mutate(dataset='Nominal') %>% rbind(pc.modelA.v2.or %>% mutate(dataset='BMI Fix')) %>%
-         rbind(pc.modelA.v3.or %>% mutate(dataset='QCOVID Fix')) %>%
-         rbind(pc.modelA.v4.or %>% mutate(dataset='Vaccine Fix'))
-eavehelpers::plot_ratios(temp %>% rename(Nominal=OR),
+#temp <- pc.modelA.v1.or %>% mutate(dataset='Nominal') %>% rbind(pc.modelA.v2.or %>% mutate(dataset='BMI Fix')) %>%
+#         rbind(pc.modelA.v3.or %>% mutate(dataset='QCOVID Fix')) %>%
+#         rbind(pc.modelA.v4.or %>% mutate(dataset='Vaccine Fix'))
+temp <- pc.modelA.v3.or %>% mutate(dataset='Feb22') %>% rbind(pc.modelA.v5.or %>% mutate(dataset='Old')) 
+eavehelpers::plot_ratios(temp %>% rename(Nominal=OR) %>% 
+                            mutate(
+                           level=ifelse(grepl("Q_DIAG",names) & level=='Yes',label,level),
+                           label=ifelse(grepl("Q_DIAG",names),'QCOVID',label)
+                         ),
                          fill=cohort,
-                         facet=as.factor(label) ~ relevel(as.factor(dataset),ref='Nominal')
+                         facet=as.factor(label) ~ relevel(as.factor(dataset),ref='Feb22')
 )
 
 ```
 
 
-
-
-```{r}
-pc.modelD.v1 <- readRDS('/home/calumm09/SerologyAnalysis/analysis/results/Nominal/modelD_cox_HR.rds')
-pc.modelD.v2 <- readRDS('/home/calumm09/SerologyAnalysis/analysis/results/VACCINE_FIX/modelD_cox_HR.rds')
-pc.modelD.v2
+```{r,fig.height =11, fig.width = 11}
+temp <- pc.modelB.v3.or %>% mutate(dataset='Feb22') %>% rbind(pc.modelB.v5.or %>% mutate(dataset='Old')) 
+eavehelpers::plot_ratios(temp %>% rename(Nominal=OR) %>% 
+                            mutate(
+                           level=ifelse(grepl("Q_DIAG",names) & level=='Yes',label,level),
+                           label=ifelse(grepl("Q_DIAG",names),'QCOVID',label)
+                         ),
+                         fill=cohort,
+                         facet=as.factor(label) ~ relevel(as.factor(dataset),ref='Feb22')
+)
 ```
 
 
+
+
+
+
 ```{r}
-temp <- pc.modelD.v1 %>% mutate(Nominal=estimate,LCL=conf.low,UCL=conf.high,label=name, dataset='Nominal') %>%
+pc.modelD.v1 <- readRDS('/home/calumm09/SerologyAnalysis/analysis/results/Nominal/modelE_cox_HR.rds')
+pc.modelD.v2 <- readRDS('/home/calumm09/SerologyAnalysis/analysis/results/VACCINE_FIX/modelE_cox_HR.rds')
+pc.modelD.v3 <- readRDS('/home/calumm09/SerologyAnalysis/analysis/results/QCOVID_OLD/modelE_cox_HR.rds')
+pc.modelD.v3
+```
+
+
+```{r,fig.height=9,fig.width=10}
+temp <- pc.modelD.v1 %>% mutate(Nominal=estimate,LCL=conf.low,UCL=conf.high,label=name, dataset='Feb22') %>%
            rbind(
-             pc.modelD.v2 %>% mutate(Nominal=estimate,LCL=conf.low,UCL=conf.high,label=name, dataset='Fix')
+             pc.modelD.v3 %>% mutate(Nominal=estimate,LCL=conf.low,UCL=conf.high,label=name, dataset='Old')
            )
 
 eavehelpers::plot_ratios(temp,
-                         xmin=0.25,xmax=5,
+                         xmin=0.1,xmax=10,
                          xtitle='HR (95% CI)',
                          fill=dataset,
                          facet=as.factor(name) ~ fct_rev(as.factor(dataset)))
