@@ -96,11 +96,6 @@ nrow(pc.modelDE.df %>% filter(outcome_hosp==1) %>% distinct(EAVE_LINKNO))
 nrow(pc.modelDE.df %>% filter(outcome_hosp==1 & insufficient_response=='Yes') %>% distinct(EAVE_LINKNO))
 ```
 
-```{r}
-nrow(pc.modelC.df %>% filter(outcome_infect==1) %>% distinct(EAVE_LINKNO))
-nrow(pc.modelC.df %>% filter(outcome_infect==1 & insufficient_response=='Yes') %>% distinct(EAVE_LINKNO))
-```
-
 
 ```{r}
 output_folder <- file.path("results", "FINAL")# Sys.Date())
