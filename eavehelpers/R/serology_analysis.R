@@ -434,7 +434,7 @@ fit_gam <- function(gamFit,var,cats = NULL, value = NULL) {
   
   pred <- predict.gam(gamFit,new_data,se.fit = TRUE)
   pred <- cbind(new_data, pred)
-  pred <- pred %>% mutate(cat=lookup[paste0('cat',cat)])
+  #pred <- pred %>% mutate(cat=eavehelpers::get_label(paste0('cat',cat)))
   pred <- pred %>% mutate(stage=ifelse(grepl('1',cat),'Dose 1',ifelse(grepl('2',cat),'Dose 2','Dose 3')))
   
   
@@ -468,7 +468,7 @@ plot_gam <- function(gamFit,var, var_ref=0, cats = NULL) {
   p <- ggplot(pred, aes(x=!!as.name(var), y=func(fit,ref_fit), color=cat)) +
     geom_line(size = 0.5, linetype='dashed') +
     geom_ribbon(aes(x = !!as.name(var), ymin = func(fit-se.fit,ref_fit), ymax = func(fit+se.fit,ref_fit), color=cat, fill=cat), alpha = 0.3) +
-    labs(y='Odds Ratio',x=lookup[var],color='',fill='') + 
+    labs(y='Odds Ratio',x=eavehelpers::get_label(var),color='',fill='') + 
     scale_colour_discrete_phs(palette=palette) +
     geom_vline(xintercept=var_ref,linetype='dotted') +
     geom_hline(yintercept=1,linetype='dotted') +

@@ -337,13 +337,24 @@ bd.modelB.gamFit.or %>% select(label,level,OR,LCL,UCL)
 
 
 
-```{r}
-#plot_gam(bd.modelB.gamFit,'age',var_ref=40,list(cat=levels((bd.modelB.df%>% filter(stage<3))$cat))) + 
-#  facet_grid(~cat,scales="free") +  
-#  coord_flip() + scale_y_log10(labels = ~ signif(.x,digits=1)) + # limits=c(0.11,11) ) + 
-#  theme(strip.background.x = element_blank(),
-#        strip.text.x = element_blank(),
-#        legend.position="top")
+```{r,fig.height = 5, fig.width = 9}
+eavehelpers::plot_gam(pc.modelA.gamFit,'age',var_ref=40,list(cat=levels(pc.modelA.df$cat))) + 
+  facet_grid(~cat,scales="free") +  
+  coord_flip() + scale_y_log10(labels = ~ signif(.x,digits=1)) + # limits=c(0.11,11) ) + 
+  theme(strip.background.x = element_blank(),
+        strip.text.x = element_blank(),
+        legend.position="top")
+
+```
+
+
+```{r,fig.height = 5, fig.width = 9}
+eavehelpers::plot_gam(bd.modelA.gamFit,'age',var_ref=40,list(cat=levels(bd.modelA.df$cat))) + 
+  facet_grid(~cat,scales="free") +  
+  coord_flip() + scale_y_log10(labels = ~ signif(.x,digits=1)) + # limits=c(0.11,11) ) + 
+  theme(strip.background.x = element_blank(),
+        strip.text.x = element_blank(),
+        legend.position="top")
 
 ```
 
