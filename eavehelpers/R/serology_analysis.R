@@ -13,8 +13,7 @@ library(data.table)
 library(forcats)
 library(broom)
 library(survival)
-library("survminer")
-library(forestplot)
+
 library(ggtext)
 library(kableExtra)
 library(rlang)
@@ -144,7 +143,7 @@ code_vars <- function(model){
   model <- model %>% 
             mutate(Sex = as.factor(Sex), #make into a factor
                    age=ageYear, #keep a record of the original age before categorisation
-                   n_risk_gps=as.factor(as.integer(n_risk_gps)-1), #coversion from <ord> to <factor>
+                   #n_risk_gps=as.factor(as.integer(n_risk_gps)-1), #coversion from <ord> to <factor>
                    cat = calculate_product_category(stage,d1_product,d2_product,d3_product,d4_product)#,
             )
   #setup SIMD, factor version of age and factor version of BMI
@@ -155,9 +154,9 @@ code_vars <- function(model){
                                                        labels = c("0-19","20-39","40-59","60+")),
                                                        levels=c("40-59","0-19","20-39","60+"))) %>%
             mutate_at(vars(one_of('Q_BMI')), ~relevel(cut(ifelse((is.na(.x) | .x<5 | .x>80 ),-1,.x), 
-                                                      breaks = c(-2,0,20,25,30,80), right = T, 
-                                                      labels = c("Unknown","0-20","20-25","25-30","30+")),
-                                                      ref='20-25')
+                                                      breaks = c(-2,5,18.5,25,30,80), right = F, 
+                                                      labels = c("Unknown","<18.5","18.5-25","25-30","30+")),
+                                                      ref='18.5-25')
             )
   
   #create a better variable for the definition of immuno suppressed 
@@ -167,11 +166,11 @@ code_vars <- function(model){
   #      but is also very rare (so was never used in any analysis)
   model <- model %>%
           mutate(immuno = case_when(
-                                    (severely_immuno_supp==1) | (Q_DIAG_IMMU>0) ~ 'Severely',
+                                    (severely_immuno_supp==1)  ~ 'Severely', #| (Q_DIAG_IMMU>0)
                                     immuno_supp==1 ~ 'Yes',
                                     TRUE ~ 'No')) %>%
           mutate(immuno = factor(immuno,levels=c('No','Yes','Severely'))) %>% ##ifelse(immuno==1,0,immuno))) %>%
-          select(-immuno_supp,-severely_immuno_supp,-Q_DIAG_IMMU)
+          select(-immuno_supp,-severely_immuno_supp)#,-Q_DIAG_IMMU)
   
   #make these binary variables into a Yes/No
   model <- model %>%
@@ -200,7 +199,7 @@ get_modelA_df <- function(df){
 #' @export
 get_modelB_df <- function(df){
   require(tidyr)
-  return (df %>% filter(n_risk_gps>0) %>% code_vars())
+  return (df %>% filter(n_risk_gps!=0) %>% code_vars())
 }
 
 
@@ -237,6 +236,7 @@ calculate_unadjusted_gam <- function(model,formula){
 #' @param formula formula string (e.g. y ~ x + z)
 #' @export
 perform_gam <- function(model,formula){
+  require(mgcv)
   fit <- gam(formula,family=binomial,data=model)
   return(fit)
 }

@@ -21,8 +21,8 @@ library(phsstyles)
 See notebook called 'LoadData.Rmd' for how the analysis dataframes were created:
 
 ```{r}
-data.pc <- readRDS("/conf/EAVE/GPanalysis/data/temp/fail_to_mount_pc_3.rds")
-data.bd <- readRDS("/conf/EAVE/GPanalysis/data/temp/fail_to_mount_bd_3.rds")
+data.pc <- readRDS("/conf/EAVE/GPanalysis/data/temp/fail_to_mount_pc_Jan13_final.rds")
+data.bd <- readRDS("/conf/EAVE/GPanalysis/data/temp/fail_to_mount_bd_Jan13_final.rds")
 print (nrow(data.pc))
 print (nrow(data.bd))
 ```
@@ -31,7 +31,7 @@ print (nrow(data.bd))
 Create an output folder for the date we are running the analysis.
 
 ```{r}
-output_folder <- file.path("results", Sys.Date())
+output_folder <- file.path("results","FINAL")# Sys.Date())
 dir.create(output_folder, showWarnings = TRUE)
 ```
 

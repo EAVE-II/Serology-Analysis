@@ -13,8 +13,8 @@ library(ggplot2)
 library(phsstyles)
 library(survival)
 
-data.pc <- readRDS("/conf/EAVE/GPanalysis/data/temp/fail_to_mount_pc_3.rds")
-data.bd <- readRDS("/conf/EAVE/GPanalysis/data/temp/fail_to_mount_bd_3.rds")
+data.pc <- readRDS("/conf/EAVE/GPanalysis/data/temp/fail_to_mount_pc_Jan13_final.rds")
+data.bd <- readRDS("/conf/EAVE/GPanalysis/data/temp/fail_to_mount_bd_Jan13_final.rds")
 print (nrow(data.pc))
 print (nrow(data.bd))
 ```
@@ -22,7 +22,7 @@ print (nrow(data.bd))
 Create an output folder for the date we are running the analysis.
 
 ```{r}
-output_folder <- file.path("results", Sys.Date())
+output_folder <- file.path("results", "FINAL")# Sys.Date())
 dir.create(output_folder, showWarnings = TRUE)
 ```
 
@@ -112,8 +112,8 @@ Create the analysis ready dataframe that can be used for both model D and model 
 * The filter of `ageYear!='0-19'` is because there is one event in this category, which messes up the fit. We require >5 events in all categories. This is just a simple  ad-hoc way around this, instead of regrouping and/or redefining categories.
 
 ```{r}
-pc.modelDE.df <- eavehelpers::serology_outcome_analysis.create_hosp_death_dataframe(data.pc,eave.data) %>% code_vars() %>% filter(ageYear!='0-19')
-bd.modelDE.df <- eavehelpers::serology_outcome_analysis.create_hosp_death_dataframe(data.bd,eave.data) %>% code_vars() %>% filter(ageYear!='0-19')
+pc.modelDE.df <- eavehelpers::serology_outcome_analysis.create_hosp_death_dataframe(data.pc,eave.data) %>% code_vars() %>% filter(ageYear!='0-19') %>% droplevels()
+bd.modelDE.df <- eavehelpers::serology_outcome_analysis.create_hosp_death_dataframe(data.bd,eave.data) %>% code_vars() %>% filter(ageYear!='0-19') %>% droplevels()
 ```
 
 
@@ -137,7 +137,7 @@ eavehelpers::plot_ratios(pc.modelD.cox.HRs %>% mutate(Nominal=estimate,LCL=conf.
 
 
 ```{r}
-f.pc <- base::c('Undetectable'=0.,'Insufficient'=4.82,'Below Average'=33.3,'Average'=230.,'Above Average'=2000)
+f.pc <- base::c('Undetectable'=0.,'Insufficient'=4.82,'Below Average'=33.8,'Average'=230.,'Above Average'=2000)
 f.bd <- base::c('Undetectable'=-1.,'Insufficient'=0.11,'Below Average'=0.7,'Average'=5,'Above Average'=8.5)
 
 pc.modelE.df <- pc.modelDE.df 
@@ -157,7 +157,8 @@ pc.modelE.df %>% group_by(igg,outcome_hosp) %>% summarise(n=n())
 Calculate a formular that will calculate the number of risks groups expect for four specific risk groups
 ```{r}
 qnames <- pc.modelE.df %>% eavehelpers::get_qcovid_names(var='outcome_hosp',condition=1,n=1)
-qnames2 <- c("Q_DIAG_BLOOD_CANCER","Q_DIAG_CHD","Q_DIAG_PULM_HYPER","Q_DIAG_COPD")
+#qnames2 <- c("Q_DIAG_BLOOD_CANCER","Q_DIAG_CHD","Q_DIAG_PULM_HYPER","Q_DIAG_COPD")
+qnames2 <- c("Q_DIAG_BLOOD_CANCER","Q_DIAG_CHD","Q_DIAG_PULM_HYPER","Q_DIAG_CKD")
 
 formula_other <- paste0(paste0(qnames,collapse = ' + ')," - ",paste0(qnames2,collapse = ' - '))
 formula_other
