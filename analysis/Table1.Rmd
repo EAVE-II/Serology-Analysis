@@ -38,7 +38,7 @@ df.bd <- df.bd %>% mutate(
 ```{r}
 
 vars <- all.vars(as.formula(pc.modelB.gam.formula))[-1] %>%
-        append(c('n_risk_gps','ur6_2016_name')) 
+        append(c('n_risk_gps','ur6_2016_name','ch_resident')) 
 
 tab <- NULL
 for (var in vars){
@@ -115,7 +115,7 @@ nrow(pc.modelDE.df %>% filter(outcome_hosp==1 & insufficient_response=='Yes') %>
 output_folder <- file.path("results", "FINAL")# Sys.Date())
 dir.create(output_folder, showWarnings = TRUE)
 
-tab %>% group_by(var) %>% filter(!(label=='No' & grepl('Q_DIAG',label))) %>% ungroup %>% 
+tab %>% group_by(var) %>% filter(!(label=='No' & grepl('Q_DIAG',var))) %>% ungroup %>% 
         mutate_all(~replace_na(as.character(.),'-')) %>% 
         write.csv(paste0(output_folder,"/table1.csv"))
 ```
