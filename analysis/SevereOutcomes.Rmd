@@ -137,6 +137,20 @@ eavehelpers::plot_ratios(pc.modelD.cox.HRs %>% mutate(Nominal=estimate,LCL=conf.
 
 
 ```{r}
+pc.modelD.cox.unadjusted <- with(pc.modelDE.df,
+                 coxph(Surv(t1,t2, outcome_hosp) ~  igg ))
+
+pc.modelD.cox.uHRs <- eavehelpers::get_forest_df(pc.modelD.cox.unadjusted,pc.modelDE.df)
+
+#attr(pc.modelC.cox.HRs,'unadjusted') <- pc.modelC.cox.uHRs
+
+eavehelpers::display_ratios_table( pc.modelD.cox.uHRs %>% mutate(Nominal=estimate,LCL=conf.low,UCL=conf.high,label=name))
+```
+
+
+
+
+```{r}
 f.pc <- base::c('Undetectable'=0.,'Insufficient'=4.82,'Below Average'=33.8,'Average'=230.,'Above Average'=2000)
 f.bd <- base::c('Undetectable'=-1.,'Insufficient'=0.11,'Below Average'=0.7,'Average'=5,'Above Average'=8.5)
 
@@ -192,6 +206,19 @@ eavehelpers::plot_ratios(pc.modelE.cox.HRs %>% mutate(label=name,Nominal=estimat
                          xtitle='HR (95% CI)'
 )
 ```
+
+```{r}
+#Q_DIAG_PULM_HYPER
+pc.modelE.cox.unadjusted <- with(pc.modelE.df,
+                 coxph(Surv(t1,t2, outcome_hosp) ~  Q_DIAG_CKD ))
+
+pc.modelE.cox.uHRs <- eavehelpers::get_forest_df(pc.modelE.cox.unadjusted,pc.modelE.df)
+
+#attr(pc.modelC.cox.HRs,'unadjusted') <- pc.modelC.cox.uHRs
+
+eavehelpers::display_ratios_table( pc.modelE.cox.uHRs %>% mutate(Nominal=estimate,LCL=conf.low,UCL=conf.high,label=name))
+```
+
 
 ```{r}
 saveRDS(pc.modelC.cox.HRs,paste0(output_folder,'/modelC_pc_cox_HR.rds'))
