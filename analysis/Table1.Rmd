@@ -115,7 +115,10 @@ nrow(pc.modelDE.df %>% filter(outcome_hosp==1 & insufficient_response=='Yes') %>
 output_folder <- file.path("results", "FINAL")# Sys.Date())
 dir.create(output_folder, showWarnings = TRUE)
 
-tab %>% group_by(var) %>% filter(!(label=='No' & grepl('Q_DIAG',var))) %>% ungroup %>% 
+tab %>% group_by(var) %>% filter(!(label=='No' & grepl('Q_DIAG',var))) %>%
+        mutate(var=ifelse(
+          grepl('Q_DIAG',var),eavehelpers::get_label(var),var)
+          ) %>% ungroup %>% 
         mutate_all(~replace_na(as.character(.),'-')) %>% 
         write.csv(paste0(output_folder,"/table1.csv"))
 ```
