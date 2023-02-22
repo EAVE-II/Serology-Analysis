@@ -21,8 +21,8 @@ library(phsstyles)
 See notebook called 'LoadData.Rmd' for how the analysis dataframes were created:
 
 ```{r}
-data.pc <- readRDS("/conf/EAVE/GPanalysis/data/temp/fail_to_mount_pc_Jan13_final.rds")
-data.bd <- readRDS("/conf/EAVE/GPanalysis/data/temp/fail_to_mount_bd_Jan13_final.rds")
+data.pc <- readRDS("/conf/EAVE/GPanalysis/data/temp/fail_to_mount_pc_Jan13_final.rds") %>% filter(stage>1) 
+data.bd <- readRDS("/conf/EAVE/GPanalysis/data/temp/fail_to_mount_bd_Jan13_final.rds") %>% filter(stage>1)
 print (nrow(data.pc))
 print (nrow(data.bd))
 ```
@@ -31,7 +31,7 @@ print (nrow(data.bd))
 Create an output folder for the date we are running the analysis.
 
 ```{r}
-output_folder <- file.path("results","FINAL")# Sys.Date())
+output_folder <- file.path("results","2DOSE")# Sys.Date())
 dir.create(output_folder, showWarnings = TRUE)
 ```
 
@@ -42,8 +42,8 @@ Build analysis dataframes for the two cohorts that we'll use for model of type-A
 We use the helper functions that take the input dataframes from the cohorts we build and they do some extra data cleaning and coding of variables (mostly it is just converting variables into factor variables that are convienent to use the the GAM fits to calculate ORs with)
 
 ```{r}
-pc.modelA.df <- eavehelpers::get_modelA_df(data.pc)
-bd.modelA.df <- eavehelpers::get_modelA_df(data.bd)
+pc.modelA.df <- eavehelpers::get_modelA_df(data.pc) %>% droplevels()
+bd.modelA.df <- eavehelpers::get_modelA_df(data.bd) %>% droplevels()
 ```
 
 
@@ -78,11 +78,12 @@ Build up a formula to use for the GAM fit for primary care attendees ...
 ```{r}
 pc.modelA.gam.formula <- paste0(
   "insufficient_response ~ ", #outcome varialbe
-  " s(age,by=cat,k=5) + cat", #age is a spline stratified by cat (product-dose categories)
-  " + s(days_since_first_measurement) ", #spline of the number of days since the start of the pandemic/first-measurement
-  " + s(days_since_last_vac) ", #days since the last vaccination, defined by the stage the measurement was taken at
+  " s(age,by=cat) + cat", #age is a spline stratified by cat (product-dose categories)
+  #" + s(days_since_first_measurement) ", #spline of the number of days since the start of the pandemic/first-measurement
+  #" + s(days_since_last_vac) ", #days since the last vaccination, defined by the stage the measurement was taken at
   " + n_risk_gps ", #main exposure - number of QCOVID risk groups
   " + Sex + Q_BMI ", # confounding variables for Sex and BMI
+  " + simd2020v2_sc_quintile",#force the inclusion of SIMD actually..
   " + ",paste0(pc.modelA.vars,collapse = " + ") #other confounding from variables named and checked above
   ) 
 
@@ -95,9 +96,9 @@ Do the same for the blood donors cohort
 ```{r}
 bd.modelA.gam.formula <- paste0(
   "insufficient_response ~ ", #outcome varialbe
-  " s(age,by=cat,k=5) + cat", #age is a spline stratified by cat (product-dose categories)
-  " + s(days_since_first_measurement) ", #spline of the number of days since the start of the pandemic/first-measurement
-  " + s(days_since_last_vac) ", #days since the last vaccination, defined by the stage the measurement was taken at
+  " s(age,by=cat) + cat", #age is a spline stratified by cat (product-dose categories)
+  #" + s(days_since_first_measurement) ", #spline of the number of days since the start of the pandemic/first-measurement
+  #" + s(days_since_last_vac) ", #days since the last vaccination, defined by the stage the measurement was taken at
   " + n_risk_gps ", #main exposure - number of QCOVID risk groups
   " + Sex + Q_BMI ", # confounding variables for Sex and BMI
   " + simd2020v2_sc_quintile",#force the inclusion of SIMD actually..
@@ -239,8 +240,8 @@ bd.modelB.qnames
 pc.modelB.gam.formula <- paste0(
   "insufficient_response ~ ", #outcome varialbe
   " s(age,by=cat) + cat", #age is a spline stratified by cat (product-dose categories)
-  " + s(days_since_first_measurement) ", #spline of the number of days since the start of the pandemic/first-measurement
-  " + s(days_since_last_vac) ", #days since the last vaccination, defined by the stage the measurement was taken at
+  #" + s(days_since_first_measurement) ", #spline of the number of days since the start of the pandemic/first-measurement
+  #" + s(days_since_last_vac) ", #days since the last vaccination, defined by the stage the measurement was taken at
   " + ",paste0(pc.modelB.qnames,collapse = " + "), #main exposure - the individiual qcovid risk groups
   " + Sex + Q_BMI ", # confounding variables for Sex and BMI
   " + simd2020v2_sc_quintile",#force the inclusion of SIMD actually..
@@ -256,8 +257,8 @@ pc.modelB.gam.formula
 bd.modelB.gam.formula <- paste0(
   "insufficient_response ~ ", #outcome varialbe
   " s(age,by=cat,k=3) + cat", #age is a spline stratified by cat (product-dose categories)
-  " + s(days_since_first_measurement) ", #spline of the number of days since the start of the pandemic/first-measurement
-  " + s(days_since_last_vac) ", #days since the last vaccination, defined by the stage the measurement was taken at
+  #" + s(days_since_first_measurement) ", #spline of the number of days since the start of the pandemic/first-measurement
+  #" + s(days_since_last_vac) ", #days since the last vaccination, defined by the stage the measurement was taken at
   " + ",paste0(bd.modelB.qnames,collapse = " + "), #main exposure - the individiual qcovid risk groups
   " + Sex + Q_BMI ", # confounding variables for Sex and BMI
   " + simd2020v2_sc_quintile",#force the inclusion of SIMD actually..
@@ -335,6 +336,28 @@ bd.modelB.gamFit.or <- eavehelpers::get_or_from_gam(bd.modelB.gamFit) %>% filter
 bd.modelB.gamFit.or %>% select(label,level,OR,LCL,UCL) 
 ```
 
+
+
+```{r,fig.height = 5, fig.width = 9}
+eavehelpers::plot_gam(pc.modelA.gamFit,'days_since_first_measurement',var_ref=0) + 
+  facet_grid(~cat,scales="free") +  
+  coord_flip() + scale_y_log10(labels = ~ signif(.x,digits=1)) + # limits=c(0.11,11) ) + 
+  theme(strip.background.x = element_blank(),
+        strip.text.x = element_blank(),
+        legend.position="top")
+
+```
+
+
+```{r,fig.height = 5, fig.width = 9}
+eavehelpers::plot_gam(pc.modelA.gamFit,'days_since_last_vac',var_ref=0) + 
+  facet_grid(~cat,scales="free") +  
+  coord_flip() + scale_y_log10(labels = ~ signif(.x,digits=1)) + # limits=c(0.11,11) ) + 
+  theme(strip.background.x = element_blank(),
+        strip.text.x = element_blank(),
+        legend.position="top")
+
+```
 
 
 ```{r,fig.height = 5, fig.width = 9}
