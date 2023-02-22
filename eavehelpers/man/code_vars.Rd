@@ -7,9 +7,6 @@ e.g. making factor variables}
 \usage{
 code_vars(model)
 }
-\arguments{
-\item{model}{}
-}
 \value{
 modified model
 }
