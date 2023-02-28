@@ -13,8 +13,8 @@ library(ggplot2)
 library(phsstyles)
 library(survival)
 
-data.pc <- readRDS("/conf/EAVE/GPanalysis/data/temp/fail_to_mount_pc_Jan13_final.rds")
-data.bd <- readRDS("/conf/EAVE/GPanalysis/data/temp/fail_to_mount_bd_Jan13_final.rds")
+data.pc <- readRDS("/conf/EAVE/GPanalysis/data/temp/fail_to_mount_pc_Jan13_final.rds") %>% filter(stage>1) 
+data.bd <- readRDS("/conf/EAVE/GPanalysis/data/temp/fail_to_mount_bd_Jan13_final.rds") %>% filter(stage>1) 
 print (nrow(data.pc))
 print (nrow(data.bd))
 ```
@@ -22,7 +22,7 @@ print (nrow(data.bd))
 Create an output folder for the date we are running the analysis.
 
 ```{r}
-output_folder <- file.path("results", "FINAL")# Sys.Date())
+output_folder <- file.path("results", "2DOSE")# Sys.Date())
 dir.create(output_folder, showWarnings = TRUE)
 ```
 
@@ -35,8 +35,8 @@ labels(eave.data)
 
 
 ```{r}
-pc.modelC.df <- eavehelpers::serology_outcome_analysis.create_infect_dataframe(data.pc,eave.data) %>% code_vars()
-bd.modelC.df <- eavehelpers::serology_outcome_analysis.create_infect_dataframe(data.bd,eave.data) %>% code_vars()
+pc.modelC.df <- eavehelpers::serology_outcome_analysis.create_infect_dataframe(data.pc,eave.data) %>% code_vars %>% droplevels()
+bd.modelC.df <- eavehelpers::serology_outcome_analysis.create_infect_dataframe(data.bd,eave.data) %>% code_vars %>% droplevels()
 ```
 
 
@@ -138,7 +138,7 @@ eavehelpers::plot_ratios(pc.modelD.cox.HRs %>% mutate(Nominal=estimate,LCL=conf.
 
 ```{r}
 pc.modelD.cox.unadjusted <- with(pc.modelDE.df,
-                 coxph(Surv(t1,t2, outcome_hosp) ~  igg ))
+                 coxph(Surv(t1,t2, outcome_hosp) ~  insufficient_response ))
 
 pc.modelD.cox.uHRs <- eavehelpers::get_forest_df(pc.modelD.cox.unadjusted,pc.modelDE.df)
 

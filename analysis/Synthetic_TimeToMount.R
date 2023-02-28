@@ -13,31 +13,43 @@ normal2 <- deriv(f_normal,
                 function.arg=c("time","scale","mu","sd","start"))
 
 
+f <- ~  start + scale*x*exp(lambda*x)
+fn <- deriv(f,
+            namevec=c("start","scale","lambda"),
+            function.arg=c("x","start","scale","lambda"))
+
+data.frame(x=seq(0,200,0.1)) %>% 
+  mutate(y=fn(x,50,50,-0.05)) %>%
+  ggplot(aes(x=x,y=y)) +
+  geom_line(linetype='dashed') 
+
 
 get_df <- function(){
   
   df <- NULL
   
-  m_scale <- 150
-  m_days <- 30.
-  m_sd <- 3
+  m_scale <- 50
+  m_days <- 10.
+  m_sd <- -0.05
 
   for (sex in c('M','F')){
     
     size <- 1000
     s_days <- 0
+    s_mu <- 1
     if(sex == 'F'){
       size <- 1500
       s_days <- 5.
+      s_mu <- 1
     }
     
     for (product in c('AZ','Pf')){
     
-      p_sd <- 1
+      p_sd <- 1.
       p_scale <- 1.
       p_days <- 0
       if(product == 'AZ'){
-        p_sd <- 1.0
+        p_sd <- 0.9
         p_scale <- 0.9
         p_days <- 0.
       }
@@ -48,13 +60,18 @@ get_df <- function(){
       
       df1 <- data.frame(x=x,Sex=sex,product=product,dose=dose) %>% rowwise() %>%
              mutate(
-                    y= rnorm(1,m_scale*p_scale*0.5*dose,m_scale*p_scale*0.1*dose) + 
-                      rnorm(1,1,0.1)*normal(log(x),
-                                            m_scale*p_scale,
-                                            log(m_days + s_days + p_days), 
-                                            log(m_sd)#*p_sd
-                                            )
-             ) %>% ungroup
+                    y= #rnorm(1,m_scale*p_scale*0.5*dose,m_scale*p_scale*0.1*dose) + 
+                       rnorm(1,1,0.1)*fn(x,
+                                         m_scale,
+                                         m_days + s_days, 
+                                         m_sd*p_sd)
+                                         )%>% ungroup
+                       #rnorm(1,1,0.1)*normal(log(x),
+                      #                      m_scale*p_scale,
+                      #                      log(m_days + s_days + p_days), 
+                      #                      log(m_sd)#*p_sd
+                      #                     )
+             
       
     
       df <- df %>% rbind(df1)
@@ -64,8 +81,26 @@ get_df <- function(){
 }
 
 df <- get_df()
+df %>% ggplot(aes(x=x,y=y,color=Sex)) + geom_point() + 
+  facet_grid(product ~ dose)
 
-df %>% ggplot(aes(x=x,y=y,color=Sex)) + geom_point() + facet_grid(product ~ dose)
+
+
+startvec <- c(start=50,scale=50,sd=log(3))
+m0 <- nls(y ~ normal(log(x), scale, mu, sd),
+          df,
+          start=startvec
+          #lower=c(start=0,scale=0,mu=-10,sd=-10),
+)
+startvec <- coef(m0)
+startvec['start'] = 0
+startvec
+
+
+
+
+
+
 
 
 startvec <- c(scale=150,mu=log(30),sd=log(3))
@@ -75,12 +110,12 @@ m0 <- nls(y ~ normal(log(x), scale, mu, sd),
           #lower=c(start=0,scale=0,mu=-10,sd=-10),
 )
 startvec <- coef(m0)
-startvec['start'] = 1
+startvec['start'] = 0
 startvec
 
-fit <- nlmer(y ~  start + normal(log(x), scale, mu, sd) ~
+fit <- nlmer(y ~  normal(log(x) - start, scale, mu, sd) ~
                + (scale|Sex) + (mu|Sex) + (sd|Sex) 
-               + (start|dose), 
+               + (scale|dose) + (start|dose), 
                #+ (scale|product) + (mu|product) + (sd|product),
              df,
              control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=100000)),
@@ -104,15 +139,17 @@ res <- results$results %>% mutate_at(c('estimate','conf.low','conf.high'),~ scal
 plot_nlmer_results(res) 
 
 
-pars <- (results$results %>% filter(group=='Sex' & level=='M') %>% as.list)$estimate
-scale <- pars[[1]]
-mu <- pars[[2]]
-sd <- pars[[3]]
+est <- (results$results %>% filter(group=='Sex' & level=='M') %>% as.list)$estimate
+low <- (results$results %>% filter(group=='Sex' & level=='M') %>% as.list)$conf.low
+high <- (results$results %>% filter(group=='Sex' & level=='M') %>% as.list)$conf.high
 
 data.frame(x=seq(0,200,0.1)) %>%
-        mutate(y=normal(log(x),scale,mu,sd)) %>%
-  ggplot(aes(x=x,y=y)) +
-  geom_line(linetype='dashed')
+        mutate(y=normal(log(x),est[[1]],est[[2]],est[[3]]),
+               ymin=normal(log(x),low[[1]],low[[2]],low[[3]]),
+               ymax=normal(log(x),high[[1]],high[[2]],high[[3]])) %>%
+  ggplot(aes(x=x,y=y,ymin=ymin,ymax=ymax)) +
+  geom_line(linetype='dashed') +
+  geom_ribbon(color='red',fill='red',alpha=0.4)
 
 
 dasd

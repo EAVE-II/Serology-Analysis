@@ -80,7 +80,7 @@ pc.modelA.gam.formula <- paste0(
   "insufficient_response ~ ", #outcome varialbe
   " s(age,by=cat) + cat", #age is a spline stratified by cat (product-dose categories)
   #" + s(days_since_first_measurement) ", #spline of the number of days since the start of the pandemic/first-measurement
-  #" + s(days_since_last_vac) ", #days since the last vaccination, defined by the stage the measurement was taken at
+  " + s(days_since_last_vac) ", #days since the last vaccination, defined by the stage the measurement was taken at
   " + n_risk_gps ", #main exposure - number of QCOVID risk groups
   " + Sex + Q_BMI ", # confounding variables for Sex and BMI
   " + simd2020v2_sc_quintile",#force the inclusion of SIMD actually..
@@ -98,7 +98,7 @@ bd.modelA.gam.formula <- paste0(
   "insufficient_response ~ ", #outcome varialbe
   " s(age,by=cat) + cat", #age is a spline stratified by cat (product-dose categories)
   #" + s(days_since_first_measurement) ", #spline of the number of days since the start of the pandemic/first-measurement
-  #" + s(days_since_last_vac) ", #days since the last vaccination, defined by the stage the measurement was taken at
+  " + s(days_since_last_vac) ", #days since the last vaccination, defined by the stage the measurement was taken at
   " + n_risk_gps ", #main exposure - number of QCOVID risk groups
   " + Sex + Q_BMI ", # confounding variables for Sex and BMI
   " + simd2020v2_sc_quintile",#force the inclusion of SIMD actually..
@@ -211,7 +211,7 @@ Check these variables again...
 pc.modelB.vars <- pc.modelB.df %>% 
                   select(insufficient_response,prior_infection,
                          simd2020v2_sc_quintile,immuno,shielding,ch_resident) %>% 
-                  eavehelpers::get_vars_to_use(outcome_var='insufficient_response')
+                  eavehelpers::get_vars_to_use(outcome_var='insufficient_response',thres=0.5)
 print (pc.modelB.vars)
 ```
 
@@ -219,7 +219,7 @@ print (pc.modelB.vars)
 bd.modelB.vars <- bd.modelB.df %>% 
                   select(insufficient_response,prior_infection,
                          simd2020v2_sc_quintile,immuno,shielding,ch_resident) %>% 
-                  eavehelpers::get_vars_to_use(outcome_var='insufficient_response')
+                  eavehelpers::get_vars_to_use(outcome_var='insufficient_response',thres=0.5)
 print (bd.modelB.vars)
 ```
 
@@ -241,7 +241,7 @@ pc.modelB.gam.formula <- paste0(
   "insufficient_response ~ ", #outcome varialbe
   " s(age,by=cat) + cat", #age is a spline stratified by cat (product-dose categories)
   #" + s(days_since_first_measurement) ", #spline of the number of days since the start of the pandemic/first-measurement
-  #" + s(days_since_last_vac) ", #days since the last vaccination, defined by the stage the measurement was taken at
+  " + s(days_since_last_vac) ", #days since the last vaccination, defined by the stage the measurement was taken at
   " + ",paste0(pc.modelB.qnames,collapse = " + "), #main exposure - the individiual qcovid risk groups
   " + Sex + Q_BMI ", # confounding variables for Sex and BMI
   " + simd2020v2_sc_quintile",#force the inclusion of SIMD actually..
@@ -258,7 +258,7 @@ bd.modelB.gam.formula <- paste0(
   "insufficient_response ~ ", #outcome varialbe
   " s(age,by=cat,k=3) + cat", #age is a spline stratified by cat (product-dose categories)
   #" + s(days_since_first_measurement) ", #spline of the number of days since the start of the pandemic/first-measurement
-  #" + s(days_since_last_vac) ", #days since the last vaccination, defined by the stage the measurement was taken at
+  " + s(days_since_last_vac) ", #days since the last vaccination, defined by the stage the measurement was taken at
   " + ",paste0(bd.modelB.qnames,collapse = " + "), #main exposure - the individiual qcovid risk groups
   " + Sex + Q_BMI ", # confounding variables for Sex and BMI
   " + simd2020v2_sc_quintile",#force the inclusion of SIMD actually..
