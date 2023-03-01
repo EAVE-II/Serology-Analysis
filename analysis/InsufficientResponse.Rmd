@@ -23,15 +23,24 @@ See notebook called 'LoadData.Rmd' for how the analysis dataframes were created:
 ```{r}
 data.pc <- readRDS("/conf/EAVE/GPanalysis/data/temp/fail_to_mount_pc_Jan13_final.rds") %>% filter(stage>1) 
 data.bd <- readRDS("/conf/EAVE/GPanalysis/data/temp/fail_to_mount_bd_Jan13_final.rds") %>% filter(stage>1)
+
+
+data.pc <- data.pc %>% mutate(insufficient_response=as.integer(IgG<200))
+data.bd <- data.bd %>% mutate(insufficient_response=as.integer(IgG<5))
+
+
 print (nrow(data.pc))
 print (nrow(data.bd))
+
+
+data.bd %>% group_by(insufficient_response) %>% summarise(n=n())
 ```
 
 
 Create an output folder for the date we are running the analysis.
 
 ```{r}
-output_folder <- file.path("results","2DOSE")# Sys.Date())
+output_folder <- file.path("results","2DOSE_Loose")# Sys.Date())
 dir.create(output_folder, showWarnings = TRUE)
 ```
 

@@ -110,9 +110,14 @@ nrow(pc.modelDE.df %>% filter(outcome_hosp==1) %>% distinct(EAVE_LINKNO))
 nrow(pc.modelDE.df %>% filter(outcome_hosp==1 & insufficient_response=='Yes') %>% distinct(EAVE_LINKNO))
 ```
 
+```{r}
+nrow(bd.modelDE.df %>% filter(outcome_hosp==1) %>% distinct(EAVE_LINKNO))
+nrow(bd.modelDE.df %>% filter(outcome_hosp==1 & insufficient_response=='Yes') %>% distinct(EAVE_LINKNO))
+```
+
 
 ```{r}
-output_folder <- file.path("results", "FINAL")# Sys.Date())
+output_folder <- file.path("results", "2DOSE")# Sys.Date())
 dir.create(output_folder, showWarnings = TRUE)
 
 tab %>% group_by(var) %>% filter(!(label=='No' & grepl('Q_DIAG',var))) %>%
