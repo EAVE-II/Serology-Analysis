@@ -509,6 +509,8 @@ add_names <- function(df,formula){
 #' @export
 plot_ratios <- function(tab,fill=NULL,facet=NULL,
                         xmin=0.01,xmax=100,xtitle='OR (95% CI)',
+			do_vlines=T,
+			no_guides=T,
                         colors=NULL){
   require(markdown)
   require(ggtext)
@@ -538,12 +540,16 @@ plot_ratios <- function(tab,fill=NULL,facet=NULL,
 
   p <- p +
     labs(title='',x='',y=xtitle) +
-    geom_hline(yintercept=c(1), linetype="dashed") +
-    geom_hline(yintercept=c(0.1,0.333,3,10), linetype="dotted") +
+    geom_hline(yintercept=c(1), linetype="dashed")
+
+  if(do_vlines){
+    p <- p + geom_hline(yintercept=c(0.1,0.333,3,10), linetype="dotted")
+    }
+  p <- p + 
     #ylim(0., 10) +
     scale_y_log10(breaks=c(0.01,0.1,0.33,1,3,10)) +
     coord_flip(ylim=c(xmin,xmax)) +
-    theme_classic() + guides(fill="none",color="none") +
+    theme_classic() +
     facet_grid(as.factor(label) ~ .,scale='free',space='free', switch='both') +
     theme(
       panel.background = element_rect(fill = NA, color = "black"),
@@ -551,6 +557,10 @@ plot_ratios <- function(tab,fill=NULL,facet=NULL,
       strip.placement = 'outside',
       axis.text.y = element_markdown(angle=0),
       strip.text.y.left = element_text(angle = 0))
+
+  if(no_guides == T){
+     p <- p + guides(fill="none",color="none") 
+  }
 
   if (!is.null(facet)){
     facet_formula =  as.formula(rlang::quo_name(rlang::enquo(facet)))
